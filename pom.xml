@@ -5,11 +5,11 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.janelia.simview</groupId>
-    <artifactId>klb</artifactId>
-    <version>0.2.13-SNAPSHOT</version>
+    <artifactId>klb-bdv</artifactId>
+    <version>0.1-SNAPSHOT</version>
     <packaging>jar</packaging>
 
-    <name>Keller Lab Block file type (.klb) - JNI Library</name>
+    <name>Keller Lab Block file type (.klb) - BigDataViewer backend</name>
     <description>The KLB is a file format developed at the Keller Lab at Janelia Research Campus to efficiently store
         and retrieve large 5D images (>4GB) using lossless compression. The format tries to combine the JPEG2000
         lossless compression levels with the block flexibility offered by HDF5 to access arbitrary regions of interest.
@@ -17,7 +17,7 @@
         in parallel using the Bzip2. Both reading and writing are parallelized and scale linearly with the number of
         cores making it much faster than JPEG2000 and HDF5 in common multi-core machines.
     </description>
-    <url>https://bitbucket.org/fernandoamat/keller-lab-block-filetype</url>
+    <url>https://github.com/bhoeckendorf/klb-bdv</url>
 
     <parent>
         <artifactId>pom-bigdataviewer</artifactId>
@@ -27,12 +27,9 @@
 
     <dependencies>
         <dependency>
-            <groupId>io.scif</groupId>
-            <artifactId>scifio</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>net.imagej</groupId>
-            <artifactId>imagej-common</artifactId>
+            <groupId>org.janelia.simview</groupId>
+            <artifactId>klb</artifactId>
+            <version>[LATEST,)</version>
         </dependency>
         <dependency>
             <groupId>sc.fiji</groupId>
