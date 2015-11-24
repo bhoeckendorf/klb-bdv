@@ -20,9 +20,7 @@ import net.imglib2.img.ImgFactory;
 import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
-import org.janelia.simview.klb.jni.KlbDataType;
-import org.janelia.simview.klb.jni.KlbImageHeader;
-import org.janelia.simview.klb.jni.KlbImageIO;
+import org.janelia.simview.klb.KLB;
 import org.scijava.command.Command;
 import org.scijava.log.LogService;
 import org.scijava.log.StderrLogService;
@@ -30,6 +28,7 @@ import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.ShortBuffer;
@@ -41,8 +40,7 @@ import java.util.Map;
 @Plugin( type = Command.class, menuPath = "Plugins>BigDataViewer>Generate KLB Dataset resolution levels" )
 public class KlbDownsampler< T extends RealType< T > & NativeType< T > > implements Command
 {
-    private final KlbImageIO io = new KlbImageIO();
-    private final KlbImageHeader header = new KlbImageHeader();
+    private final KLB klb = KLB.newInstance();
 
     @Parameter
     private File xmlFile;
@@ -193,16 +191,7 @@ public class KlbDownsampler< T extends RealType< T > & NativeType< T > > impleme
                 final long[][] dims = dimensions.get( viewSetupId );
                 final double[][] smpl = sampling.get( viewSetupId );
 
-                final T jType = ( T ) loader.getSetupImgLoader( viewSetupId ).getImageType();
-                KlbDataType cType = null;
-                switch ( jType.getBitsPerPixel() ) {
-                    case 8:
-                        cType = KlbDataType.UINT8_TYPE;
-                        break;
-                    case 16:
-                        cType = KlbDataType.UINT16_TYPE;
-                        break;
-                }
+                final T type = ( T ) loader.getSetupImgLoader( viewSetupId ).getImageType();
                 final ImgFactory< T > imageFactory = new ArrayImgFactory< T >();
                 RandomAccessibleInterval currentImage = loader.getSetupImgLoader( viewSetupId ).getImage( t, ImgLoaderHints.LOAD_COMPLETELY );
                 final long[] currentDims = new long[ currentImage.numDimensions() ];
@@ -214,7 +203,7 @@ public class KlbDownsampler< T extends RealType< T > & NativeType< T > > impleme
                 log.debug( String.format( "     sampling              %s", Arrays.toString( smpl[ 0 ] ) ) );
 
                 for ( int level = 1; level < scales.length; ++level ) {
-                    final Img< T > downsampledImage = imageFactory.create( dims[ level ], jType );
+                    final Img< T > downsampledImage = imageFactory.create( dims[ level ], type );
                     downsampledImage.dimensions( currentDims );
 
                     log.info( String.format( "    Level %d", level ) );
@@ -227,7 +216,6 @@ public class KlbDownsampler< T extends RealType< T > & NativeType< T > > impleme
                     final ByteBuffer buffer = convertToBytes( downsampledImage );
                     final String filePath = resolver.getFilePath( t, viewSetupId, level );
                     log.debug( filePath );
-                    io.setFilename( filePath );
 
                     klbDims[ 0 ] = currentDims[ 0 ];
                     klbDims[ 1 ] = currentDims[ 1 ];
@@ -235,9 +223,11 @@ public class KlbDownsampler< T extends RealType< T > & NativeType< T > > impleme
                     klbSampling[ 0 ] = ( float ) smpl[ level ][ 0 ];
                     klbSampling[ 1 ] = ( float ) smpl[ level ][ 1 ];
                     klbSampling[ 2 ] = ( float ) smpl[ level ][ 2 ];
-                    header.setHeader( klbDims, cType, klbSampling );
-                    io.setHeader( header );
-                    io.writeImage( buffer.array(), numThreads );
+                    try {
+                        klb.writeFull( buffer.array(), filePath, klbDims, type, klbSampling, null, null, null );
+                    } catch ( IOException e ) {
+                        log.error( e );
+                    }
 
                     currentImage = downsampledImage;
                 }

@@ -1,10 +1,11 @@
 package org.janelia.simview.klb.bdv;
 
-import org.janelia.simview.klb.jni.KlbImageHeader;
+import org.janelia.simview.klb.KLB;
 import org.janelia.simview.klb.jni.KlbImageIO;
 import org.janelia.simview.klb.jni.KlbRoi;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -23,6 +24,7 @@ public class KlbPartitionResolverDefault implements KlbPartitionResolver
     private double[][] sampling = null;
     private int firstTimePoint = 0, lastTimePoint = 0;
     private int numResolutionLevels = 1;
+    private final KLB klb = KLB.newInstance();
 
     /**
      * Constructs a KlbPartitionResolver from a file system path following
@@ -235,30 +237,32 @@ public class KlbPartitionResolverDefault implements KlbPartitionResolver
     public boolean getImageDimensions( final int timePoint, final int viewSetup, final int level, final long[] out )
     {
         final String filePath = getFilePath( timePoint, viewSetup, level );
-        final KlbImageHeader header = new KlbImageHeader();
-        if ( header.readHeader( filePath ) == 0 ) {
-            final long[] dims = header.getXyzct();
+        try {
+            final long[] dims = klb.readHeader( filePath ).imageSize;
             out[ 0 ] = dims[ 0 ];
             out[ 1 ] = dims[ 1 ];
             out[ 2 ] = dims[ 2 ];
             return true;
+        } catch ( IOException e ) {
+            e.printStackTrace();
+            return false;
         }
-        return false;
     }
 
     @Override
     public boolean getBlockDimensions( final int timePoint, final int viewSetup, final int level, final int[] out )
     {
         final String filePath = getFilePath( timePoint, viewSetup, level );
-        final KlbImageHeader header = new KlbImageHeader();
-        if ( header.readHeader( filePath ) == 0 ) {
-            final long[] dims = header.getBlockSize();
+        try {
+            final long[] dims = klb.readHeader( filePath ).blockSize;
             out[ 0 ] = ( int ) dims[ 0 ];
             out[ 1 ] = ( int ) dims[ 1 ];
             out[ 2 ] = ( int ) dims[ 2 ];
             return true;
+        } catch ( IOException e ) {
+            e.printStackTrace();
+            return false;
         }
-        return false;
     }
 
     @Override
@@ -271,15 +275,16 @@ public class KlbPartitionResolverDefault implements KlbPartitionResolver
             return true;
         }
         final String filePath = getFilePath( timePoint, viewSetup, level );
-        final KlbImageHeader header = new KlbImageHeader();
-        if ( header.readHeader( filePath ) == 0 ) {
-            final float[] smpl = header.getPixelSize();
+        try {
+            final float[] smpl = klb.readHeader( filePath ).pixelSpacing;
             out[ 0 ] = smpl[ 0 ];
             out[ 1 ] = smpl[ 1 ];
             out[ 2 ] = smpl[ 2 ];
             return true;
+        } catch ( IOException e ) {
+            e.printStackTrace();
+            return false;
         }
-        return false;
     }
 
     @Override

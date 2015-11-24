@@ -11,9 +11,7 @@ import mpicbg.spim.data.sequence.VoxelDimensions;
 import net.imglib2.*;
 import net.imglib2.img.Img;
 import net.imglib2.img.ImgFactory;
-import net.imglib2.img.array.ArrayImg;
 import net.imglib2.img.array.ArrayImgFactory;
-import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.img.basictypeaccess.volatiles.array.VolatileShortArray;
 import net.imglib2.img.cell.CellImgFactory;
 import net.imglib2.realtransform.AffineTransform3D;
@@ -24,13 +22,10 @@ import net.imglib2.type.volatiles.VolatileUnsignedShortType;
 import net.imglib2.util.Fraction;
 import net.imglib2.util.Intervals;
 import net.imglib2.view.Views;
-import org.apache.commons.lang.NotImplementedException;
-import org.janelia.simview.klb.jni.KlbImageIO;
-import org.janelia.simview.klb.jni.KlbRoi;
+import org.janelia.simview.klb.KLB;
 import spim.Threads;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Map;
@@ -52,6 +47,7 @@ public class KlbSetupImgLoaderUInt16 implements ViewerSetupImgLoader< UnsignedSh
     private double[][] mipMapResolutions;
     private AffineTransform3D[] mipMapTransforms;
     private final VolatileGlobalCellCache cache;
+    private KLB klb;
 
     public KlbSetupImgLoaderUInt16( final AbstractSequenceDescription< ?, ?, ? > seq, final KlbPartitionResolver resolver, final int viewSetupId, final VolatileGlobalCellCache cache )
     {
@@ -84,7 +80,15 @@ public class KlbSetupImgLoaderUInt16 implements ViewerSetupImgLoader< UnsignedSh
     public RandomAccessibleInterval< UnsignedShortType > getImage( final int timePointId, final int level, final ImgLoaderHint... hints )
     {
         if ( Arrays.asList( hints ).contains( ImgLoaderHints.LOAD_COMPLETELY ) ) {
-            return loadImageCompletely( timePointId, level );
+            if ( klb == null ) {
+                klb = KLB.newInstance();
+                klb.setNumThreads( Threads.numThreads() );
+            }
+            try {
+                return klb.readFull( (( KlbPartitionResolverDefault ) resolver).getFilePath( timePointId, viewSetupId, level ) );
+            } catch ( IOException e ) {
+                e.printStackTrace();
+            }
         }
         final CachedCellImg< UnsignedShortType, VolatileShortArray > img = prepareCachedImage( timePointId, level, LoadingStrategy.BLOCKING );
         final UnsignedShortType linkedType = new UnsignedShortType( img );
@@ -215,43 +219,6 @@ public class KlbSetupImgLoaderUInt16 implements ViewerSetupImgLoader< UnsignedSh
         return new CachedCellImg< T, VolatileShortArray >( cells );
     }
 
-    private RandomAccessibleInterval< UnsignedShortType > loadImageCompletely( final int timePointId, final int level )
-    {
-        getImageSize( timePointId, level ).dimensions( imageSize );
-        long numBytes = arrayLoader.getBytesPerElement();
-        for ( final long d : imageSize ) {
-            numBytes *= d;
-        }
-        final int[] imageSizeInt = new int[ imageSize.length ];
-        for ( int d = 0; d < imageSizeInt.length; ++d ) {
-            imageSizeInt[ d ] = ( int ) imageSize[ d ];
-        }
-
-        final KlbImageIO io = new KlbImageIO( (( KlbPartitionResolverDefault ) resolver).getFilePath( timePointId, viewSetupId, level ) );
-        io.readHeader();
-        if ( numBytes <= Integer.MAX_VALUE ) {
-            final ByteBuffer bytes = ByteBuffer.allocate( ( int ) numBytes );
-            io.readImageFull( bytes.array(), Threads.numThreads() );
-            final ArrayImg img = ArrayImgs.unsignedShorts( bytes.asShortBuffer().array(), imageSize );
-            return img;
-        } else {
-            throw new NotImplementedException("Reading CellImgs directly is not yet implemented");
-//            getBlockSize( timePointId, level );
-//            final CellImgFactory< UnsignedShortType > factory = new CellImgFactory< UnsignedShortType >( blockSize );
-//            final CellImg< UnsignedShortType, ShortArray, DefaultCell< ShortArray > > cellImg =
-//                    ( CellImg< UnsignedShortType, ShortArray, DefaultCell< ShortArray > > ) factory.create( imageSize, new UnsignedShortType() );
-//            final Cursor< DefaultCell< ShortArray > > cursor = cellImg.getCells().cursor();
-//            final long[] min = new long[ imageSizeInt.length ];
-//            final KlbRoi roi = new KlbRoi();
-//            while ( cursor.hasNext() ) {
-//                final DefaultCell< ShortArray > cell = cursor.next();
-//                final short[] dataBlock = cell.getData().getCurrentStorageArray();
-//                io.readImage( null, roi, Threads.numThreads() );
-//            }
-//            return null;
-        }
-    }
-
     // copied from bdv.img.hdf5.Hdf5ImageLoader by Tobias Pietzsch et al.
     private void normalize( final IterableInterval< FloatType > img )
     {
@@ -329,12 +296,14 @@ public class KlbSetupImgLoaderUInt16 implements ViewerSetupImgLoader< UnsignedSh
 
     public class KlbVolatileArrayLoaderUInt16 implements CacheArrayLoader< VolatileShortArray >
     {
-
-        final private KlbPartitionResolver resolver;
+        public final KLB klb;
+        private final KlbPartitionResolver resolver;
         private VolatileShortArray theEmptyArray;
 
         public KlbVolatileArrayLoaderUInt16( final KlbPartitionResolver resolver )
         {
+            klb = KLB.newInstance();
+            klb.setNumThreads( 1 );
             this.resolver = resolver;
             theEmptyArray = new VolatileShortArray( 96 * 96 * 8, false );
         }
@@ -373,17 +342,21 @@ public class KlbSetupImgLoaderUInt16 implements ViewerSetupImgLoader< UnsignedSh
         )
                 throws InterruptedException
         {
-            final KlbImageIO io = new KlbImageIO();
-            final KlbRoi roi = new KlbRoi();
-            final ByteBuffer bytes = ByteBuffer.allocate( 2 * dimensions[ 0 ] * dimensions[ 1 ] * dimensions[ 2 ] );
-            bytes.order( ByteOrder.LITTLE_ENDIAN );
-            resolver.set( timePoint, viewSetup, level, dimensions, offset, io, roi );
-            if ( io.readImage( bytes.array(), roi, 1 ) == 0 ) {
-                final short[] shorts = new short[ bytes.limit() / 2 ];
-                bytes.asShortBuffer().get( shorts );
+            final short[] shorts = new short[ dimensions[ 0 ] * dimensions[ 1 ] * dimensions[ 2 ] ];
+            try {
+                klb.readROIinPlace(
+                        (( KlbPartitionResolverDefault ) resolver).getFilePath( timePoint, viewSetup, level ),
+                        new long[]{ offset[ 0 ], offset[ 1 ], offset[ 2 ], 0, 0 },
+                        new long[]{
+                                offset[ 0 ] + dimensions[ 0 ] - 1,
+                                offset[ 1 ] + dimensions[ 1 ] - 1,
+                                offset[ 2 ] + dimensions[ 2 ] - 1,
+                                0, 0 },
+                        shorts );
+                return new VolatileShortArray( shorts, true );
+            } catch ( IOException ex ) {
                 return new VolatileShortArray( shorts, true );
             }
-            return new VolatileShortArray( bytes.limit() / 2, true );
         }
 
         @Override
