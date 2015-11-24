@@ -1,13 +1,12 @@
 COPYRIGHT
      
-     This code was developed by Fernando Amat from July 2014 to January 2015 while
-   at the Janelia Farm Research Campus of the Howard Hughes Medical Institute. It is
-   released under the following copyright notice that applies to all files:
+     This code was developed by Burkhard Hoeckendorf while at the
+     Janelia Farm Research Campus of the Howard Hughes Medical Institute. It is
+     released under the following copyright notice that applies to all files:
 
 /*****************************************************************************************\
 *                                                                                         *
-*  Copyright (c) July, 2014 Dr. Fernando Amat and Howard Hughes Medical Institute      *
-*  ("HHMI")                                                                               *
+*  Copyright (c) 2015 Burkhard Hoeckendorf and Howard Hughes Medical Institute ("HHMI")   *
 *                                                                                         *
 *  This software is provided and licensed on the following terms. By downloading,         *
 *  using and/or copying the software, you agree that you have read, understood, and       *
@@ -27,13 +26,13 @@ COPYRIGHT
 *	   product must notify the authors of this use.					  *
 *                                                                                         *
 *  For use of this software and documentation for purposes other than those listed above, *
-*  contact Dr. Fernando Amat at:                                                          *
+*  contact Burkhard Hoeckendorf at:                                                       *
 *                                                                                         *
 *    Janelia Farm Research Campus                                                         *
 *    19700 Helix Drive                                                                    *
 *    Ashburn, VA  20147-2408                                                              *
 *    											  *
-*    Email: amatf...@AT@...janelia.hhmi.org    (substitute ...@AT@... by @)               *
+*    Email: hoeckendorfb...@AT@...janelia.hhmi.org   (substitute ...@AT@... by @)         *
 *                                                                                         *
 *  For any issues regarding HHMI or use of its name, contact:                             *
 *                                                                                         *
