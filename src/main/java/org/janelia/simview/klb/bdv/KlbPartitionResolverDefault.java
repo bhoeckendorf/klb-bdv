@@ -1,5 +1,7 @@
 package org.janelia.simview.klb.bdv;
 
+import net.imglib2.type.NativeType;
+import net.imglib2.type.numeric.RealType;
 import org.janelia.simview.klb.KLB;
 import org.janelia.simview.klb.jni.KlbImageIO;
 import org.janelia.simview.klb.jni.KlbRoi;
@@ -14,7 +16,7 @@ import java.util.regex.Pattern;
 /**
  * KlbPartitionResolver using a user-defined path name tag pattern.
  */
-public class KlbPartitionResolverDefault implements KlbPartitionResolver
+public class KlbPartitionResolverDefault<T extends RealType<T> & NativeType<T> > implements KlbPartitionResolver<T>
 {
     protected final String[] viewSetupTemplates;
     protected final int[] angleIds, channelIds, illuminationIds;
@@ -171,6 +173,17 @@ public class KlbPartitionResolverDefault implements KlbPartitionResolver
     public String getViewSetupName( final int viewSetup )
     {
         return new File(viewSetupTemplates[ viewSetup ]).getName().replace( ".klb", "" );
+    }
+
+    @Override
+    public T getViewSetupImageType( final int viewSetup ) {
+        final String fp = getFilePath( getFirstTimePoint(), viewSetup, 0 );
+        try {
+            return (T) klb.readHeader( fp ).dataType;
+        } catch ( IOException e ) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     @Override

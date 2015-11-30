@@ -1,5 +1,7 @@
 package org.janelia.simview.klb.bdv;
 
+import net.imglib2.type.NativeType;
+import net.imglib2.type.numeric.RealType;
 import org.janelia.simview.klb.jni.KlbImageIO;
 import org.janelia.simview.klb.jni.KlbRoi;
 
@@ -20,12 +22,14 @@ import org.janelia.simview.klb.jni.KlbRoi;
  * defined by time point, ViewSetup, level, ROI start and
  * ROI dimensions.
  */
-public interface KlbPartitionResolver
+public interface KlbPartitionResolver<T extends RealType<T> & NativeType<T> >
 {
 
     int getNumViewSetups();
 
     String getViewSetupName( final int viewSetup );
+
+    T getViewSetupImageType( final int viewSetup );
 
     int getAngleId( final int viewSetup );
 
