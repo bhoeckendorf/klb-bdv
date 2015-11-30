@@ -106,7 +106,7 @@ public class KlbSpimDataAdapter implements MultiViewDatasetDefinition
                 null,
                 missingViews );
 
-        final KlbImageLoader loader = new KlbImageLoader( resolver, seq );
+        final KlbImgLoader loader = new KlbImgLoader( resolver, seq );
         seq.setImgLoader( loader );
 
         final HashMap< ViewId, ViewRegistration > registrations = new HashMap< ViewId, ViewRegistration >();

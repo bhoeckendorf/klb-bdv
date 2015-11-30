@@ -37,17 +37,17 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class KlbImageLoader implements ViewerImgLoader, MultiResolutionImgLoader
+public class KlbImgLoader implements ViewerImgLoader, MultiResolutionImgLoader
 {
     private final KlbPartitionResolver resolver;
-    private final AbstractSequenceDescription< BasicViewSetup, BasicViewDescription< BasicViewSetup >, KlbImageLoader > seq;
+    private final AbstractSequenceDescription< BasicViewSetup, BasicViewDescription< BasicViewSetup >, KlbImgLoader > seq;
     private final VolatileGlobalCellCache cache;
     private final HashMap< Integer, KlbSetupImgLoader > setupImgLoaders = new HashMap< Integer, KlbSetupImgLoader >();
 
-    public KlbImageLoader( final KlbPartitionResolver resolver, final AbstractSequenceDescription< ?, ?, ? > seq )
+    public KlbImgLoader( final KlbPartitionResolver resolver, final AbstractSequenceDescription< ?, ?, ? > seq )
     {
         this.resolver = resolver;
-        this.seq = ( AbstractSequenceDescription< BasicViewSetup, BasicViewDescription< BasicViewSetup >, KlbImageLoader > ) seq;
+        this.seq = ( AbstractSequenceDescription< BasicViewSetup, BasicViewDescription< BasicViewSetup >, KlbImgLoader > ) seq;
         cache = new VolatileGlobalCellCache(
                 seq.getTimePoints().size(),
                 resolver.getNumViewSetups(),

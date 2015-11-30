@@ -87,7 +87,7 @@ public class KlbDownsampler< T extends RealType< T > & NativeType< T > > impleme
         final int numThreads = Runtime.getRuntime().availableProcessors();
 
         final BasicImgLoader loader = seq.getImgLoader();
-        final KlbPartitionResolverDefault resolver = ( KlbPartitionResolverDefault ) (( KlbImageLoader ) loader).getResolver();
+        final KlbPartitionResolverDefault resolver = ( KlbPartitionResolverDefault ) (( KlbImgLoader ) loader).getResolver();
 
 
         // calculate dimensions, sampling, and relative downsampling factors for each level

@@ -8,17 +8,16 @@ import org.jdom2.Element;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import static mpicbg.spim.data.XmlKeys.IMGLOADER_FORMAT_ATTRIBUTE_NAME;
 
-@ImgLoaderIo( format = "klb", type = KlbImageLoader.class )
-public class XmlIoKlbImageLoader implements XmlIoBasicImgLoader< KlbImageLoader >
+@ImgLoaderIo( format = "klb", type = KlbImgLoader.class )
+public class XmlIoKlbImageLoader implements XmlIoBasicImgLoader< KlbImgLoader >
 {
 
     @Override
-    public Element toXml( final KlbImageLoader imgLoader, final File basePath )
+    public Element toXml( final KlbImgLoader imgLoader, final File basePath )
     {
         final Element elem = new Element( "ImageLoader" );
         elem.setAttribute( IMGLOADER_FORMAT_ATTRIBUTE_NAME, "klb" );
@@ -27,10 +26,10 @@ public class XmlIoKlbImageLoader implements XmlIoBasicImgLoader< KlbImageLoader 
     }
 
     @Override
-    public KlbImageLoader fromXml( final Element elem, final File basePath, final AbstractSequenceDescription< ?, ?, ? > sequenceDescription )
+    public KlbImgLoader fromXml( final Element elem, final File basePath, final AbstractSequenceDescription< ?, ?, ? > sequenceDescription )
     {
         final KlbPartitionResolver resolver = resolverFromXml( elem.getChild( "Resolver" ) );
-        return new KlbImageLoader( resolver, sequenceDescription );
+        return new KlbImgLoader( resolver, sequenceDescription );
     }
 
     private Element resolverToXml( final KlbPartitionResolver resolver )

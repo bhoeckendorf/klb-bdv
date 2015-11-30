@@ -89,7 +89,7 @@ public class TransformsSpimreg2Simview implements Command
         final String outputDir = xmlFile.getParent() + File.separator + "SiMView-XMLs" + File.separator;
         new File( outputDir ).mkdir();
 
-        final KlbPartitionResolverDefault resolver = ( KlbPartitionResolverDefault ) (( KlbImageLoader ) imageLoader).getResolver();
+        final KlbPartitionResolverDefault resolver = ( KlbPartitionResolverDefault ) (( KlbImgLoader ) imageLoader).getResolver();
         final List< ViewSetup > viewSetups = spimData.getSequenceDescription().getViewSetupsOrdered();
         final ViewRegistrations viewRegistrations = spimData.getViewRegistrations();
         final DocumentBuilderFactory docBuilderFactory = DocumentBuilderFactory.newInstance();
