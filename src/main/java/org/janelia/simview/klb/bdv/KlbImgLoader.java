@@ -95,6 +95,10 @@ public class KlbImgLoader implements ViewerImgLoader, MultiResolutionImgLoader
         private double[][] mipMapResolutions;
         private AffineTransform3D[] mipMapTransforms;
 
+        // cached constructors to create linked types
+        private Constructor< T > typeConstructor;
+        private Constructor< V > volatileTypeConstructor;
+
         /**
          * This instance of KLB is used to load images completely and directly. It will use all available threads to
          * read the image, whereas the KLB instances in the BigDataViewer use 1 thread each.
@@ -140,16 +144,25 @@ public class KlbImgLoader implements ViewerImgLoader, MultiResolutionImgLoader
                 }
             }
             final CachedCellImg< T, A > img = prepareCachedImage( timePointId, level, LoadingStrategy.BLOCKING );
-            for ( final Constructor c : getImageType().getClass().getConstructors() ) {
-                try {
-                    final T linkedType = ( T ) c.newInstance( img );
-                    img.setLinkedType( linkedType );
-                    break;
-                } catch ( Exception e ) {
-                    e.printStackTrace();
+            if ( typeConstructor == null ) {
+                for ( final Constructor< ? > c : getImageType().getClass().getConstructors() ) {
+                    typeConstructor = ( Constructor< T > ) c;
+                    try {
+                        final T linkedType = typeConstructor.newInstance( img );
+                        img.setLinkedType( linkedType );
+                        return img;
+                    } catch ( Exception ex ) {
+                        typeConstructor = null;
+                    }
                 }
             }
-            return img;
+            try {
+                final T linkedType = typeConstructor.newInstance( img );
+                img.setLinkedType( linkedType );
+                return img;
+            } catch ( Exception ex ) {
+                throw new IllegalArgumentException( "Could not instantiate linked type " + getImageType().getClass().getName() );
+            }
         }
 
         @Override
@@ -261,16 +274,25 @@ public class KlbImgLoader implements ViewerImgLoader, MultiResolutionImgLoader
         public RandomAccessibleInterval< V > getVolatileImage( final int timePointId, final int level, final ImgLoaderHint... hints )
         {
             final CachedCellImg< V, A > img = prepareCachedImage( timePointId, level, LoadingStrategy.VOLATILE );
-            for ( final Constructor c : getVolatileImageType().getClass().getConstructors() ) {
-                try {
-                    final V linkedType = ( V ) c.newInstance( img );
-                    img.setLinkedType( linkedType );
-                    break;
-                } catch ( Exception e ) {
-                    e.printStackTrace();
+            if ( volatileTypeConstructor == null ) {
+                for ( final Constructor< ? > c : getVolatileImageType().getClass().getConstructors() ) {
+                    volatileTypeConstructor = ( Constructor< V > ) c;
+                    try {
+                        final V linkedType = volatileTypeConstructor.newInstance( img );
+                        img.setLinkedType( linkedType );
+                        return img;
+                    } catch ( Exception ex ) {
+                        volatileTypeConstructor = null;
+                    }
                 }
             }
-            return img;
+            try {
+                final V linkedType = volatileTypeConstructor.newInstance( img );
+                img.setLinkedType( linkedType );
+                return img;
+            } catch ( Exception ex ) {
+                throw new IllegalArgumentException( "Could not instantiate linked type " + getVolatileImageType().getClass().getName() );
+            }
         }
 
         private < T extends NativeType< T > > CachedCellImg< T, A > prepareCachedImage( final int timePointId, final int level, final LoadingStrategy loadingStrategy )
