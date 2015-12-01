@@ -22,33 +22,4 @@ public abstract class KlbVolatileArrayLoader< T, V extends Volatile< T >, A exte
     public abstract T getType();
 
     public abstract V getVolatileType();
-
-    protected abstract A tryLoadArray(
-            final int timePoint,
-            final int viewSetup,
-            final int level,
-            final int[] dimensions,
-            final long[] offset
-    )
-            throws InterruptedException;
-
-
-    @Override
-    public A loadArray(
-            final int timePoint,
-            final int viewSetup,
-            final int level,
-            final int[] dimensions,
-            final long[] offset
-    )
-            throws InterruptedException
-    {
-        try {
-            return tryLoadArray( timePoint, viewSetup, level, dimensions, offset );
-        } catch ( final OutOfMemoryError e ) {
-            cache.clearCache();
-            System.gc();
-            return tryLoadArray( timePoint, viewSetup, level, dimensions, offset );
-        }
-    }
 }

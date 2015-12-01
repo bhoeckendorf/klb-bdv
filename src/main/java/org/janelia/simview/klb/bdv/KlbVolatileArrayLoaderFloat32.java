@@ -37,7 +37,7 @@ public class KlbVolatileArrayLoaderFloat32 extends KlbVolatileArrayLoader< Float
     }
 
     @Override
-    protected VolatileFloatArray tryLoadArray(
+    public VolatileFloatArray loadArray(
             final int timePoint,
             final int viewSetup,
             final int level,

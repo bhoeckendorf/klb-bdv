@@ -37,7 +37,7 @@ public class KlbVolatileArrayLoaderUInt16 extends KlbVolatileArrayLoader< Unsign
     }
 
     @Override
-    protected VolatileShortArray tryLoadArray(
+    public VolatileShortArray loadArray(
             final int timePoint,
             final int viewSetup,
             final int level,
