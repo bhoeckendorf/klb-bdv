@@ -1,7 +1,6 @@
 package org.janelia.simview.klb.bdv;
 
 import bdv.spimdata.XmlIoSpimDataMinimal;
-import mpicbg.spim.data.generic.sequence.BasicImgLoader;
 import mpicbg.spim.data.registration.ViewRegistration;
 import mpicbg.spim.data.registration.ViewRegistrations;
 import mpicbg.spim.data.sequence.TimePoint;
@@ -61,10 +60,10 @@ public class TransformsSpimreg2Simview implements Command
         log.info( "Converting SPIM Registration transforms to SiMView standard" );
 
         SpimData2 spimData = null;
-        BasicImgLoader imageLoader = null;
+        KlbImgLoader imageLoader = null;
         try {
             spimData = new XmlIoSpimData2( null ).load( xmlFile.getAbsolutePath() );
-            imageLoader = new XmlIoSpimDataMinimal().load( xmlFile.getAbsolutePath() ).getSequenceDescription().getImgLoader();
+            imageLoader = ( KlbImgLoader ) new XmlIoSpimDataMinimal().load( xmlFile.getAbsolutePath() ).getSequenceDescription().getImgLoader();
         } catch ( Exception e ) {
             log.error( e );
         }
@@ -89,7 +88,7 @@ public class TransformsSpimreg2Simview implements Command
         final String outputDir = xmlFile.getParent() + File.separator + "SiMView-XMLs" + File.separator;
         new File( outputDir ).mkdir();
 
-        final KlbPartitionResolverDefault resolver = ( KlbPartitionResolverDefault ) (( KlbImgLoader ) imageLoader).getResolver();
+        final KlbPartitionResolver resolver = imageLoader.getResolver();
         final List< ViewSetup > viewSetups = spimData.getSequenceDescription().getViewSetupsOrdered();
         final ViewRegistrations viewRegistrations = spimData.getViewRegistrations();
         final DocumentBuilderFactory docBuilderFactory = DocumentBuilderFactory.newInstance();

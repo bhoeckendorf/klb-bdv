@@ -57,6 +57,7 @@ public class KlbImgLoader implements ViewerImgLoader, MultiResolutionImgLoader
         for ( final BasicViewSetup viewSetup : seq.getViewSetupsOrdered() ) {
             final int id = viewSetup.getId();
             final Type type = this.resolver.getViewSetupImageType( id );
+            System.out.println(type.getClass().getName());
             if ( type instanceof UnsignedByteType )
                 setupImgLoaders.put( id, new KlbSetupImgLoader( id, new KlbVolatileArrayLoaderUInt8( this.resolver, cache ) ) );
             else if ( type instanceof UnsignedShortType )
@@ -138,7 +139,7 @@ public class KlbImgLoader implements ViewerImgLoader, MultiResolutionImgLoader
                     klb.setNumThreads( Threads.numThreads() );
                 }
                 try {
-                    return klb.readFull( (( KlbPartitionResolverDefault ) resolver).getFilePath( timePointId, viewSetupId, level ) );
+                    return klb.readFull( resolver.getFilePath( timePointId, viewSetupId, level ) );
                 } catch ( IOException e ) {
                     e.printStackTrace();
                 }

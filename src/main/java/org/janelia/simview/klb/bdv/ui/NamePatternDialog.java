@@ -6,7 +6,6 @@ import mpicbg.spim.data.SpimDataException;
 import net.miginfocom.swing.MigLayout;
 import org.janelia.simview.klb.bdv.KlbMultiFileNameTag;
 import org.janelia.simview.klb.bdv.KlbPartitionResolver;
-import org.janelia.simview.klb.bdv.KlbPartitionResolverDefault;
 import org.janelia.simview.klb.bdv.KlbSpimDataAdapter;
 
 import javax.swing.*;
@@ -96,7 +95,7 @@ public class NamePatternDialog extends JDialog implements ActionListener
 
     public KlbPartitionResolver getResolver()
     {
-        final KlbPartitionResolverDefault resolver = new KlbPartitionResolverDefault( filePathPanel.getFilePath(), tags );
+        final KlbPartitionResolver resolver = new KlbPartitionResolver( filePathPanel.getFilePath(), tags );
         if ( samplingPanel.isSamplingSpecified() ) {
             final double[] fromPanel = samplingPanel.getSampling();
             final double[][] sampling = new double[ resolver.getMaxNumResolutionLevels() ][ 3 ];
@@ -132,7 +131,7 @@ public class NamePatternDialog extends JDialog implements ActionListener
             chooser.setFileSelectionMode( JFileChooser.FILES_ONLY );
             if ( chooser.showSaveDialog( this ) == JFileChooser.APPROVE_OPTION ) {
                 String filePath = chooser.getSelectedFile().getAbsolutePath();
-                if (!filePath.endsWith( ".xml" )) {
+                if ( !filePath.endsWith( ".xml" ) ) {
                     filePath += ".xml";
                 }
                 final KlbSpimDataAdapter spimData = new KlbSpimDataAdapter( getResolver() );

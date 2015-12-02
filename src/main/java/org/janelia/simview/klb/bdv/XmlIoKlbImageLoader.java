@@ -39,22 +39,19 @@ public class XmlIoKlbImageLoader implements XmlIoBasicImgLoader< KlbImgLoader >
         final String type = resolver.getClass().getName();
         resolverElem.setAttribute( "type", type );
 
-        if ( type.equals( KlbPartitionResolverDefault.class.getName() ) ) {
-            final KlbPartitionResolverDefault typedResolver = ( KlbPartitionResolverDefault ) resolver;
-            for ( final String template : typedResolver.viewSetupTemplates ) {
-                final Element templateElem = new Element( "ViewSetupTemplate" );
-                templateElem.addContent( XmlHelpers.textElement( "template", template ) );
-                resolverElem.addContent( templateElem );
-            }
-            if ( typedResolver.getLastTimePoint() - typedResolver.getFirstTimePoint() > 0 ) {
-                KlbMultiFileNameTag tag = new KlbMultiFileNameTag();
-                tag.dimension = KlbMultiFileNameTag.Dimension.TIME;
-                tag.tag = typedResolver.timeTag;
-                tag.first = typedResolver.getFirstTimePoint();
-                tag.last = typedResolver.getLastTimePoint();
-                tag.stride = 1;
-                resolverElem.addContent( nameTagToXml( tag ) );
-            }
+        for ( final String template : resolver.viewSetupTemplates ) {
+            final Element templateElem = new Element( "ViewSetupTemplate" );
+            templateElem.addContent( XmlHelpers.textElement( "template", template ) );
+            resolverElem.addContent( templateElem );
+        }
+        if ( resolver.getLastTimePoint() - resolver.getFirstTimePoint() > 0 ) {
+            KlbMultiFileNameTag tag = new KlbMultiFileNameTag();
+            tag.dimension = KlbMultiFileNameTag.Dimension.TIME;
+            tag.tag = resolver.timeTag;
+            tag.first = resolver.getFirstTimePoint();
+            tag.last = resolver.getLastTimePoint();
+            tag.stride = 1;
+            resolverElem.addContent( nameTagToXml( tag ) );
         }
 
         return resolverElem;
@@ -63,7 +60,7 @@ public class XmlIoKlbImageLoader implements XmlIoBasicImgLoader< KlbImgLoader >
     private KlbPartitionResolver resolverFromXml( final Element elem )
     {
         final String type = elem.getAttributeValue( "type" );
-        if ( type.equals( KlbPartitionResolverDefault.class.getName() ) ) {
+        if ( type.equals( KlbPartitionResolver.class.getName() ) || type.equals( KlbPartitionResolver.class.getName() + "Default" ) ) {
             final List< String > templates = new ArrayList< String >();
 
             for ( final Element e : elem.getChildren( "ViewSetupTemplate" ) ) {
@@ -74,7 +71,7 @@ public class XmlIoKlbImageLoader implements XmlIoBasicImgLoader< KlbImgLoader >
             for ( final Element e : elem.getChildren( "MultiFileNameTag" ) ) {
                 tags.add( nameTagFromXml( e ) );
             }
-            if (tags.isEmpty()) {
+            if ( tags.isEmpty() ) {
                 final KlbMultiFileNameTag tag = new KlbMultiFileNameTag();
                 tag.tag = "";
                 tag.dimension = KlbMultiFileNameTag.Dimension.TIME;
@@ -86,7 +83,7 @@ public class XmlIoKlbImageLoader implements XmlIoBasicImgLoader< KlbImgLoader >
 
             String[] arr = new String[ templates.size() ];
             templates.toArray( arr );
-            return new KlbPartitionResolverDefault( arr, tags.get( 0 ).tag, tags.get( 0 ).first, tags.get( 0 ).last, "RESLVL", 1 );
+            return new KlbPartitionResolver( arr, tags.get( 0 ).tag, tags.get( 0 ).first, tags.get( 0 ).last, "RESLVL", 1 );
         }
 
         throw new RuntimeException( "Could not instantiate KlbPartitionResolver" );

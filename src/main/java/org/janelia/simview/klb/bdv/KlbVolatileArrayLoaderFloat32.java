@@ -49,7 +49,7 @@ public class KlbVolatileArrayLoaderFloat32 extends KlbVolatileArrayLoader< Float
         final float[] buffer = new float[ dimensions[ 0 ] * dimensions[ 1 ] * dimensions[ 2 ] ];
         try {
             klb.readROIinPlace(
-                    (( KlbPartitionResolverDefault ) resolver).getFilePath( timePoint, viewSetup, level ),
+                    resolver.getFilePath( timePoint, viewSetup, level ),
                     new long[]{ offset[ 0 ], offset[ 1 ], offset[ 2 ], 0, 0 },
                     new long[]{
                             offset[ 0 ] + dimensions[ 0 ] - 1,

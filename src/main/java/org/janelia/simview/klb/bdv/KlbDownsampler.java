@@ -7,7 +7,6 @@ import bdv.spimdata.SpimDataMinimal;
 import bdv.spimdata.XmlIoSpimDataMinimal;
 import mpicbg.spim.data.SpimDataException;
 import mpicbg.spim.data.generic.sequence.AbstractSequenceDescription;
-import mpicbg.spim.data.generic.sequence.BasicImgLoader;
 import mpicbg.spim.data.generic.sequence.BasicViewSetup;
 import mpicbg.spim.data.generic.sequence.ImgLoaderHints;
 import mpicbg.spim.data.sequence.TimePoint;
@@ -86,8 +85,8 @@ public class KlbDownsampler< T extends RealType< T > & NativeType< T > > impleme
         }
         final int numThreads = Runtime.getRuntime().availableProcessors();
 
-        final BasicImgLoader loader = seq.getImgLoader();
-        final KlbPartitionResolverDefault resolver = ( KlbPartitionResolverDefault ) (( KlbImgLoader ) loader).getResolver();
+        final KlbImgLoader loader = ( KlbImgLoader ) seq.getImgLoader();
+        final KlbPartitionResolver resolver = loader.getResolver();
 
 
         // calculate dimensions, sampling, and relative downsampling factors for each level
