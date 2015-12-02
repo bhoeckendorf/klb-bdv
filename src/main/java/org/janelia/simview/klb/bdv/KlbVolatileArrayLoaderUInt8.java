@@ -1,6 +1,5 @@
 package org.janelia.simview.klb.bdv;
 
-import bdv.img.cache.VolatileGlobalCellCache;
 import net.imglib2.img.basictypeaccess.volatiles.array.VolatileByteArray;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.type.volatiles.VolatileUnsignedByteType;
@@ -13,9 +12,9 @@ public class KlbVolatileArrayLoaderUInt8 extends KlbVolatileArrayLoader< Unsigne
     private final VolatileUnsignedByteType volatileType = new VolatileUnsignedByteType();
     private VolatileByteArray theEmptyArray = new VolatileByteArray( 96 * 96 * 8, false );
 
-    public KlbVolatileArrayLoaderUInt8( final KlbPartitionResolver resolver, final VolatileGlobalCellCache cache )
+    public KlbVolatileArrayLoaderUInt8( final KlbPartitionResolver resolver )
     {
-        super( resolver, cache );
+        super( resolver );
     }
 
     @Override
@@ -38,25 +37,16 @@ public class KlbVolatileArrayLoaderUInt8 extends KlbVolatileArrayLoader< Unsigne
 
     @Override
     public VolatileByteArray loadArray(
-            final int timePoint,
-            final int viewSetup,
-            final int level,
-            final int[] dimensions,
-            final long[] offset
+            final String filePath,
+            final long[] xyzctMin,
+            final long[] xyzctMax,
+            final int numElements
     )
             throws InterruptedException
     {
-        final byte[] buffer = new byte[ dimensions[ 0 ] * dimensions[ 1 ] * dimensions[ 2 ] ];
+        final byte[] buffer = new byte[ numElements ];
         try {
-            klb.readROIinPlace(
-                    resolver.getFilePath( timePoint, viewSetup, level ),
-                    new long[]{ offset[ 0 ], offset[ 1 ], offset[ 2 ], 0, 0 },
-                    new long[]{
-                            offset[ 0 ] + dimensions[ 0 ] - 1,
-                            offset[ 1 ] + dimensions[ 1 ] - 1,
-                            offset[ 2 ] + dimensions[ 2 ] - 1,
-                            0, 0 },
-                    buffer );
+            klb.readROIinPlace( filePath, xyzctMin, xyzctMax, buffer );
             return new VolatileByteArray( buffer, true );
         } catch ( IOException ex ) {
             return new VolatileByteArray( buffer, true );

@@ -1,6 +1,5 @@
 package org.janelia.simview.klb.bdv;
 
-import bdv.img.cache.VolatileGlobalCellCache;
 import net.imglib2.img.basictypeaccess.volatiles.array.VolatileFloatArray;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.type.volatiles.VolatileFloatType;
@@ -13,9 +12,9 @@ public class KlbVolatileArrayLoaderFloat32 extends KlbVolatileArrayLoader< Float
     private final VolatileFloatType volatileType = new VolatileFloatType();
     private VolatileFloatArray theEmptyArray = new VolatileFloatArray( 96 * 96 * 8, false );
 
-    public KlbVolatileArrayLoaderFloat32( final KlbPartitionResolver resolver, final VolatileGlobalCellCache cache )
+    public KlbVolatileArrayLoaderFloat32( final KlbPartitionResolver resolver )
     {
-        super( resolver, cache );
+        super( resolver );
     }
 
     @Override
@@ -38,25 +37,16 @@ public class KlbVolatileArrayLoaderFloat32 extends KlbVolatileArrayLoader< Float
 
     @Override
     public VolatileFloatArray loadArray(
-            final int timePoint,
-            final int viewSetup,
-            final int level,
-            final int[] dimensions,
-            final long[] offset
+            final String filePath,
+            final long[] xyzctMin,
+            final long[] xyzctMax,
+            final int numElements
     )
             throws InterruptedException
     {
-        final float[] buffer = new float[ dimensions[ 0 ] * dimensions[ 1 ] * dimensions[ 2 ] ];
+        final float[] buffer = new float[ numElements ];
         try {
-            klb.readROIinPlace(
-                    resolver.getFilePath( timePoint, viewSetup, level ),
-                    new long[]{ offset[ 0 ], offset[ 1 ], offset[ 2 ], 0, 0 },
-                    new long[]{
-                            offset[ 0 ] + dimensions[ 0 ] - 1,
-                            offset[ 1 ] + dimensions[ 1 ] - 1,
-                            offset[ 2 ] + dimensions[ 2 ] - 1,
-                            0, 0 },
-                    buffer );
+            klb.readROIinPlace( filePath, xyzctMin, xyzctMax, buffer );
             return new VolatileFloatArray( buffer, true );
         } catch ( IOException ex ) {
             return new VolatileFloatArray( buffer, true );

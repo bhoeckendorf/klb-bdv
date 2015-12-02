@@ -57,13 +57,12 @@ public class KlbImgLoader implements ViewerImgLoader, MultiResolutionImgLoader
         for ( final BasicViewSetup viewSetup : seq.getViewSetupsOrdered() ) {
             final int id = viewSetup.getId();
             final Type type = this.resolver.getViewSetupImageType( id );
-            System.out.println(type.getClass().getName());
             if ( type instanceof UnsignedByteType )
-                setupImgLoaders.put( id, new KlbSetupImgLoader( id, new KlbVolatileArrayLoaderUInt8( this.resolver, cache ) ) );
+                setupImgLoaders.put( id, new KlbSetupImgLoader( id, new KlbVolatileArrayLoaderUInt8( this.resolver ) ) );
             else if ( type instanceof UnsignedShortType )
-                setupImgLoaders.put( id, new KlbSetupImgLoader( id, new KlbVolatileArrayLoaderUInt16( this.resolver, cache ) ) );
+                setupImgLoaders.put( id, new KlbSetupImgLoader( id, new KlbVolatileArrayLoaderUInt16( this.resolver ) ) );
             else if ( type instanceof FloatType )
-                setupImgLoaders.put( id, new KlbSetupImgLoader( id, new KlbVolatileArrayLoaderFloat32( this.resolver, cache ) ) );
+                setupImgLoaders.put( id, new KlbSetupImgLoader( id, new KlbVolatileArrayLoaderFloat32( this.resolver ) ) );
             else
                 throw new UnsupportedOperationException( "Unknown or unsupported type" );
         }
