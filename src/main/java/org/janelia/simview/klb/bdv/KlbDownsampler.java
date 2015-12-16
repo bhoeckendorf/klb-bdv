@@ -6,6 +6,7 @@ import bdv.export.ProposeMipmaps;
 import bdv.spimdata.SpimDataMinimal;
 import bdv.spimdata.XmlIoSpimDataMinimal;
 import mpicbg.spim.data.SpimDataException;
+import mpicbg.spim.data.SpimDataIOException;
 import mpicbg.spim.data.generic.sequence.AbstractSequenceDescription;
 import mpicbg.spim.data.generic.sequence.BasicViewSetup;
 import mpicbg.spim.data.generic.sequence.ImgLoaderHints;
@@ -26,7 +27,14 @@ import org.scijava.log.StderrLogService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 
+import org.jdom2.Document;
+import org.jdom2.Element;
+import org.jdom2.input.SAXBuilder;
+import org.jdom2.output.Format;
+import org.jdom2.output.XMLOutputter;
+
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -40,6 +48,7 @@ import java.util.Map;
 public class KlbDownsampler< T extends RealType< T > & NativeType< T > > implements Command
 {
     private final KLB klb = KLB.newInstance();
+    private final Map<Integer, Integer> numResolutionLevels = new HashMap<Integer, Integer>();
 
     @Parameter
     private File xmlFile;
@@ -61,12 +70,13 @@ public class KlbDownsampler< T extends RealType< T > & NativeType< T > > impleme
         process( xmlFile, skipFirst );
     }
 
-    public void process( final File xmlFile, final boolean skipFirst )
+    public void process( final File xmlFile, final boolean skipFirst ) 
     {
         this.skipFirst = skipFirst;
         final String filePath = xmlFile.getAbsolutePath();
 
         SpimDataMinimal data = null;
+        int resolutionLevels = 1;
         try {
             data = new XmlIoSpimDataMinimal().load( filePath );
         } catch ( SpimDataException e ) {
@@ -76,6 +86,9 @@ public class KlbDownsampler< T extends RealType< T > & NativeType< T > > impleme
         if ( data != null ) {
             process( data.getSequenceDescription() );
         }
+        
+        updateXML();
+        
     }
 
     private void process( final AbstractSequenceDescription< ?, ?, ? > seq )
@@ -118,6 +131,7 @@ public class KlbDownsampler< T extends RealType< T > & NativeType< T > > impleme
             relativeScaling.put( viewSetupId, scales );
             dimensions.put( viewSetupId, dims );
             sampling.put( viewSetupId, smpl );
+            numResolutionLevels.put(viewSetupId, dims.length);
         }
 
 
@@ -157,6 +171,7 @@ public class KlbDownsampler< T extends RealType< T > & NativeType< T > > impleme
                 relativeScaling.put( viewSetupId, newScales );
                 dimensions.put( viewSetupId, newDims );
                 sampling.put( viewSetupId, newSmpl );
+                numResolutionLevels.put(viewSetupId, newDims.length);
             }
         }
 
@@ -260,6 +275,70 @@ public class KlbDownsampler< T extends RealType< T > & NativeType< T > > impleme
             default:
                 throw new IllegalArgumentException( "Unknown or unsupported data type." );
         }
+    }
+    
+    private void updateXML()
+    {
+    	//process the xml file
+    	int resolutionLevels = getMaxNumResolutionLevels();
+        SAXBuilder saxBuilder = new SAXBuilder();
+        Document doc;
+        Element resolverElement;
+        try {
+        	doc = saxBuilder.build(xmlFile);
+	        resolverElement = doc.getRootElement().getChild("SequenceDescription").getChild("ImageLoader").getChild("Resolver");
+        }
+		catch ( final Exception e )
+		{
+			throw new RuntimeException("xml file is in wrong format");
+		}
+        List<Element> multiTagList = resolverElement.getChildren("MultiFileNameTag");
+
+        boolean hasTag = false;
+        if ( ! multiTagList.isEmpty()) {
+        	for (int i = 0; i < multiTagList.size(); ++i) { //only replace resolution level if exists
+        		if (multiTagList.get(i).getChildText("dimension").equals("RESOLUTION_LEVEL")) {
+        			multiTagList.get(i).getChild("lastIndex").setText(Integer.toString(resolutionLevels-1));
+        			hasTag = true;
+        		}
+        	}
+        }
+        if (! hasTag) { //add resolution tag if it does not exist
+        	Element resolutionTag = new Element("MultiFileNameTag");
+        	Element c1 = new Element("dimension"), c2 = new Element("tag"), c3 = new Element("lastIndex");
+        	c1.addContent("RESOLUTION_LEVEL");
+        	c2.addContent("RSLVL");
+        	c3.addContent(Integer.toString(resolutionLevels-1));
+        	resolutionTag.addContent(c1);
+        	resolutionTag.addContent(c2);
+        	resolutionTag.addContent(c3);
+        	resolverElement.addContent(resolutionTag);
+        }         
+        
+        //replace xml with the new file
+        final XMLOutputter xout = new XMLOutputter(Format.getPrettyFormat());
+        try
+		{
+			xout.output( doc, new FileOutputStream( xmlFile.getAbsolutePath()) );
+		}
+		catch ( final Exception e )
+		{
+			throw new RuntimeException("Cannot print the new xml file");
+		}
+    }
+    
+    public int getNumResolutionLevels(int viewSetupId)
+    {
+    	return numResolutionLevels.get(viewSetupId).intValue();
+    }
+    
+    public int getMaxNumResolutionLevels()
+    {
+    	int maxNumResolutionLevels = 0;
+        for (Integer viewId : numResolutionLevels.keySet()) {
+        	maxNumResolutionLevels = Math.max(maxNumResolutionLevels, getNumResolutionLevels(viewId));
+        }
+        return maxNumResolutionLevels;
     }
 
     public static void main( final String[] args )
