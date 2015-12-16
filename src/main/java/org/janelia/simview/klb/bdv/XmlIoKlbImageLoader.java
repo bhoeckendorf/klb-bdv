@@ -9,6 +9,7 @@ import org.jdom2.Element;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Collections;
 
 import static mpicbg.spim.data.XmlKeys.IMGLOADER_FORMAT_ATTRIBUTE_NAME;
 
@@ -53,6 +54,15 @@ public class XmlIoKlbImageLoader implements XmlIoBasicImgLoader< KlbImgLoader >
             tag.stride = 1;
             resolverElem.addContent( nameTagToXml( tag ) );
         }
+        if ( resolver.getMaxNumResolutionLevels() > 1 ) {
+        	KlbMultiFileNameTag tag = new KlbMultiFileNameTag();
+            tag.dimension = KlbMultiFileNameTag.Dimension.RESOLUTION_LEVEL;
+            tag.tag = resolver.resLvlTag;
+            tag.first = 0;
+            tag.last = resolver.getMaxNumResolutionLevels() - 1;
+            tag.stride = 1;
+            resolverElem.addContent( nameTagToXml( tag ) );
+        }
 
         return resolverElem;
     }
@@ -71,7 +81,15 @@ public class XmlIoKlbImageLoader implements XmlIoBasicImgLoader< KlbImgLoader >
             for ( final Element e : elem.getChildren( "MultiFileNameTag" ) ) {
                 tags.add( nameTagFromXml( e ) );
             }
-            if ( tags.isEmpty() ) {
+            
+            boolean hasTime = false, hasResolution = false;
+            for (int i=0; i < tags.size(); ++i) {
+            	if (tags.get(i).dimension.equals(KlbMultiFileNameTag.Dimension.TIME))
+            		hasTime = true;
+            	if (tags.get(i).dimension.equals(KlbMultiFileNameTag.Dimension.RESOLUTION_LEVEL))
+            		hasResolution = true;
+            }
+            if ( ! hasTime ) {
                 final KlbMultiFileNameTag tag = new KlbMultiFileNameTag();
                 tag.tag = "";
                 tag.dimension = KlbMultiFileNameTag.Dimension.TIME;
@@ -80,10 +98,20 @@ public class XmlIoKlbImageLoader implements XmlIoBasicImgLoader< KlbImgLoader >
                 tag.stride = 1;
                 tags.add( tag );
             }
-
+            if ( ! hasResolution ) {
+                final KlbMultiFileNameTag tag = new KlbMultiFileNameTag();
+                tag.tag = "";
+                tag.dimension = KlbMultiFileNameTag.Dimension.RESOLUTION_LEVEL;
+                tag.first = 0;
+                tag.last = 0;
+                tag.stride = 1;
+                tags.add( tag );
+            }
+            Collections.sort(tags);
+            
             String[] arr = new String[ templates.size() ];
             templates.toArray( arr );
-            return new KlbPartitionResolver( arr, tags.get( 0 ).tag, tags.get( 0 ).first, tags.get( 0 ).last, "RESLVL", 1 );
+            return new KlbPartitionResolver( arr, tags.get(0).tag, tags.get(0).first, tags.get(0).last, "RESLVL", tags.get(1).last+1 );
         }
 
         throw new RuntimeException( "Could not instantiate KlbPartitionResolver" );
@@ -113,6 +141,9 @@ public class XmlIoKlbImageLoader implements XmlIoBasicImgLoader< KlbImgLoader >
         final String dim = XmlHelpers.getText( elem, "dimension" );
         if ( dim.equals( KlbMultiFileNameTag.Dimension.TIME.toString() ) ) {
             tag.dimension = KlbMultiFileNameTag.Dimension.TIME;
+        }
+        else if ( dim.equals( KlbMultiFileNameTag.Dimension.RESOLUTION_LEVEL.toString() ) ) {
+            tag.dimension = KlbMultiFileNameTag.Dimension.RESOLUTION_LEVEL;
         }
         tag.tag = XmlHelpers.getText( elem, "tag" );
         tag.last = XmlHelpers.getInt( elem, "lastIndex" );

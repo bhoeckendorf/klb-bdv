@@ -61,13 +61,20 @@ public class KlbPartitionResolver< T extends RealType< T > & NativeType< T > >
 
         // Depth
         final List< Integer > depths = new ArrayList< Integer >();
-
+        
         for ( final KlbMultiFileNameTag tag : nameTags ) {
             if ( tag.tag.trim().isEmpty() ) {
                 continue;
             }
             final Pattern pattern = Pattern.compile( String.format( "%s\\d+", tag.tag ) );
             final Matcher matcher = pattern.matcher( template );
+            
+            //resolution level is parsed with priority - always use the resLvlTag specified in the table
+            if ( tag.dimension == KlbMultiFileNameTag.Dimension.RESOLUTION_LEVEL && tag.last > 0) {
+                resLvlTag = tag.tag;
+                resLvlMatch = null;
+                numResolutionLevels = tag.last + 1;
+            } 
             if ( matcher.find() ) {
                 final String match = template.substring( matcher.start(), matcher.end() );
                 final String format = String.format( "%s%s%dd", tag.tag, "%0", match.length() - tag.tag.length() );
@@ -82,7 +89,7 @@ public class KlbPartitionResolver< T extends RealType< T > & NativeType< T > >
                     resLvlTag = tag.tag;
                     resLvlMatch = match;
                     resLvlFormat = format;
-                    numResolutionLevels = tag.last;
+                    numResolutionLevels = tag.last + 1;
                 } else {
                     if ( depth > 1 ) {
                         foundTags.add( tag );
@@ -142,6 +149,11 @@ public class KlbPartitionResolver< T extends RealType< T > & NativeType< T > >
 
                 fn = fn.replaceAll( String.format( "%s\\d+", tag.tag ), String.format( formats.get( d ), name ) );
             }
+            
+            //remove RESLVL tag if specified file is higher res level
+            if ( resLvlMatch != null )
+            	fn = fn.replace( "."+resLvlMatch , "");
+            
             viewSetupTemplates[ setup ] = fn;
             angleIds[ setup ] = angleId;
             channelIds[ setup ] = channelId;

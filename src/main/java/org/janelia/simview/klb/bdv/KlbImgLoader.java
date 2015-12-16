@@ -347,8 +347,24 @@ public class KlbImgLoader implements ViewerImgLoader, MultiResolutionImgLoader
         {
             if ( mipMapTransforms == null ) {
                 mipMapTransforms = new AffineTransform3D[ resolver.getNumResolutionLevels( viewSetupId ) ];
+                long[] fullresDimension = new long[3];
+                resolver.getImageDimensions(resolver.getFirstTimePoint(), viewSetupId, 0, fullresDimension);
                 for ( int level = 0; level < mipMapTransforms.length; ++level ) {
-                    mipMapTransforms[ level ] = new AffineTransform3D();
+                    mipMapTransforms[ level ] = new AffineTransform3D(); 
+                	long[] currentDimension = new long[3];
+                	resolver.getImageDimensions(resolver.getFirstTimePoint(), viewSetupId, level, currentDimension);
+                	double[] scale = new double[3];
+                	double[] offset = new double[3];
+                	for ( int dim = 0; dim < 3; ++dim)
+                	{
+                		scale[dim] = (double)fullresDimension[dim]/currentDimension[dim];
+                		offset[dim] = (scale[dim]-1.0)/2.0;
+                	}
+                	mipMapTransforms[level].set(
+                            scale[ 0 ], 0, 0, offset[0],
+                            0, scale[ 1 ], 0, offset[1],
+                            0, 0, scale[ 2 ], offset[2]
+                    );
                 }
             }
             return mipMapTransforms;
