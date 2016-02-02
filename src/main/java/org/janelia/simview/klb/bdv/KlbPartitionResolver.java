@@ -167,7 +167,7 @@ public class KlbPartitionResolver< T extends RealType< T > & NativeType< T > >
     public KlbPartitionResolver( final String[] viewSetupTemplates, final String timeTag, final int firstTimePoint, final int lastTimePoint, final String resolutionLevelTag, final int numResolutionLevels )
     {
         this.viewSetupTemplates = viewSetupTemplates;
-        this.timeTag = timeTag;
+        this.timeTag = timeTag.trim().isEmpty() ? null : timeTag;
         this.firstTimePoint = firstTimePoint;
         this.lastTimePoint = lastTimePoint;
         this.resLvlTag = resolutionLevelTag;
