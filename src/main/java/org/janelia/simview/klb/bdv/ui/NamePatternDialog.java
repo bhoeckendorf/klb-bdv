@@ -127,7 +127,7 @@ public class NamePatternDialog extends JDialog implements ActionListener
             dispose();
 
         } else if ( source == saveXmlButton ) {
-            final JFileChooser chooser = new JFileChooser( filePathPanel.getFilePath() );
+            final JFileChooser chooser = new JFileChooser( SingleFilePathPanel.getCurrentOrDefaultPath( filePathPanel.getFilePath() ) );
             chooser.setFileSelectionMode( JFileChooser.FILES_ONLY );
             if ( chooser.showSaveDialog( this ) == JFileChooser.APPROVE_OPTION ) {
                 String filePath = chooser.getSelectedFile().getAbsolutePath();

@@ -8,13 +8,33 @@ import java.awt.event.ActionListener;
 
 public class SingleFilePathPanel extends JPanel implements ActionListener
 {
-    private final JTextField textField = new JTextField( System.getProperty( "user.home" ) );
+    private static String currentPath = "";
     private final JButton button = new JButton( "..." );
     private final int selectionMode;
+    private final JTextField textField = new JTextField( getCurrentOrDefaultPath() );
 
     // ToDo: use events rather than references
     private final NameTagPanel nameTagPanel;
     private final SpecifySamplingPanel samplingPanel;
+
+    protected static String getCurrentOrDefaultPath( final String suggestion )
+    {
+        if ( suggestion == null || suggestion.trim().isEmpty() )
+            return getCurrentOrDefaultPath();
+        return suggestion;
+    }
+
+    protected static String getCurrentOrDefaultPath()
+    {
+        if ( currentPath.isEmpty() )
+            return System.getProperty( "user.home" );
+        return currentPath;
+    }
+
+    protected static void updateCurrentPath( final String path )
+    {
+        currentPath = path;
+    }
 
     public SingleFilePathPanel( final String label, final int fileChooserSelectionMode, final NameTagPanel nameTagPanel, final SpecifySamplingPanel samplingPanel )
     {
@@ -41,11 +61,12 @@ public class SingleFilePathPanel extends JPanel implements ActionListener
     public void actionPerformed( final ActionEvent e )
     {
         if ( e.getSource() == button ) {
-            final JFileChooser chooser = new JFileChooser( textField.getText() );
+            final JFileChooser chooser = new JFileChooser( getCurrentOrDefaultPath( textField.getText() ) );
             chooser.setFileSelectionMode( selectionMode );
             if ( chooser.showOpenDialog( this ) == JFileChooser.APPROVE_OPTION ) {
                 final String filePath = chooser.getSelectedFile().getAbsolutePath();
                 textField.setText( filePath );
+                updateCurrentPath( filePath );
 
                 nameTagPanel.updateTemplate( filePath );
                 if ( !samplingPanel.isSamplingSpecified() ) {
