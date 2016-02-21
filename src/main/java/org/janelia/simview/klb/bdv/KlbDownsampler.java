@@ -6,7 +6,6 @@ import bdv.export.ProposeMipmaps;
 import bdv.spimdata.SpimDataMinimal;
 import bdv.spimdata.XmlIoSpimDataMinimal;
 import mpicbg.spim.data.SpimDataException;
-import mpicbg.spim.data.SpimDataIOException;
 import mpicbg.spim.data.generic.sequence.AbstractSequenceDescription;
 import mpicbg.spim.data.generic.sequence.BasicViewSetup;
 import mpicbg.spim.data.generic.sequence.ImgLoaderHints;
@@ -21,17 +20,16 @@ import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
 import org.janelia.simview.klb.KLB;
-import org.scijava.command.Command;
-import org.scijava.log.LogService;
-import org.scijava.log.StderrLogService;
-import org.scijava.plugin.Parameter;
-import org.scijava.plugin.Plugin;
-
 import org.jdom2.Document;
 import org.jdom2.Element;
 import org.jdom2.input.SAXBuilder;
 import org.jdom2.output.Format;
 import org.jdom2.output.XMLOutputter;
+import org.scijava.command.Command;
+import org.scijava.log.LogService;
+import org.scijava.log.StderrLogService;
+import org.scijava.plugin.Parameter;
+import org.scijava.plugin.Plugin;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -76,7 +74,6 @@ public class KlbDownsampler< T extends RealType< T > & NativeType< T > > impleme
         final String filePath = xmlFile.getAbsolutePath();
 
         SpimDataMinimal data = null;
-        int resolutionLevels = 1;
         try {
             data = new XmlIoSpimDataMinimal().load( filePath );
         } catch ( SpimDataException e ) {
@@ -96,8 +93,6 @@ public class KlbDownsampler< T extends RealType< T > & NativeType< T > > impleme
         if ( log == null ) {
             log = new StderrLogService();
         }
-        final int numThreads = Runtime.getRuntime().availableProcessors();
-
         final KlbImgLoader loader = ( KlbImgLoader ) seq.getImgLoader();
         final KlbPartitionResolver resolver = loader.getResolver();
 
