@@ -85,7 +85,6 @@ public class KlbDownsampler< T extends RealType< T > & NativeType< T > > impleme
         }
         
         updateXML();
-        
     }
 
     private void process( final AbstractSequenceDescription< ?, ?, ? > seq )
@@ -117,9 +116,9 @@ public class KlbDownsampler< T extends RealType< T > & NativeType< T > > impleme
 
             for ( int level = 1; level < scales.length; ++level ) {  // scaling[0] is full sampling
                 for ( int dim = 0; dim < numDims; ++dim ) {
-                    scales[ level ][ dim ] /= scales[ level - 1 ][ dim ];
-                    dims[ level ][ dim ] = dims[ level - 1 ][ dim ] / scales[ level ][ dim ];
-                    smpl[ level ][ dim ] = smpl[ level - 1 ][ dim ] * scales[ level ][ dim ];
+                    dims[ level ][ dim ] = dims[ 0 ][ dim ] / scales[ level ][ dim ];
+                    smpl[ level ][ dim ] = smpl[ 0 ][ dim ] * scales[ level ][ dim ];
+                    scales[ level ][ dim ] = ( int ) (dims[ level - 1 ][ dim ] / dims[ level ][ dim ]);
                 }
             }
 
