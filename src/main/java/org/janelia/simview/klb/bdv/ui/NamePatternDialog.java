@@ -2,6 +2,7 @@ package org.janelia.simview.klb.bdv.ui;
 
 import bdv.BigDataViewer;
 import bdv.export.ProgressWriterConsole;
+import bdv.viewer.ViewerOptions;
 import mpicbg.spim.data.SpimDataException;
 import net.miginfocom.swing.MigLayout;
 import org.janelia.simview.klb.bdv.KlbMultiFileNameTag;
@@ -120,7 +121,7 @@ public class NamePatternDialog extends JDialog implements ActionListener
         if ( source == viewButton ) {
             final KlbSpimDataAdapter spimData = new KlbSpimDataAdapter( getResolver() );
             try {
-                new BigDataViewer( spimData.createDataset(), filePathPanel.getFilePath(), new ProgressWriterConsole() );
+                BigDataViewer.open( spimData.createDataset(), filePathPanel.getFilePath(), new ProgressWriterConsole(), ViewerOptions.options() );
             } catch ( Exception ex ) {
                 ex.printStackTrace();
             }
