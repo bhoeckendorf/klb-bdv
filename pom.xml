@@ -6,7 +6,7 @@
 
     <groupId>org.janelia.simview</groupId>
     <artifactId>klb-bdv</artifactId>
-    <version>0.1-SNAPSHOT</version>
+    <version>0.1</version>
     <packaging>jar</packaging>
 
     <name>Keller Lab Block file type (.klb) - BigDataViewer backend</name>
@@ -22,7 +22,7 @@
     <parent>
         <artifactId>pom-bigdataviewer</artifactId>
         <groupId>sc.fiji</groupId>
-        <version>2.2.2</version>
+        <version>3.0.0</version>
     </parent>
 
     <dependencies>
