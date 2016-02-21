@@ -51,7 +51,7 @@ public class KlbDownsampler< T extends RealType< T > & NativeType< T > > impleme
     @Parameter
     private File xmlFile;
 
-    @Parameter
+    //@Parameter
     private boolean skipFirst = false;
 
     @Parameter
