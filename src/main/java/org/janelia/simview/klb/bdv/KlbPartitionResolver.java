@@ -386,7 +386,7 @@ public class KlbPartitionResolver< T extends RealType< T > & NativeType< T > >
         roi.setXyzctLB( new long[]{ min[ 0 ], min[ 1 ], min[ 2 ], 0, 0 } );
     }
 
-    protected String getFilePath( final int timePoint, final int viewSetup, final int level )
+    public String getFilePath( final int timePoint, final int viewSetup, final int level )
     {
         String fn = viewSetupTemplates[ viewSetup ];
         if ( timeMatch != null ) {
