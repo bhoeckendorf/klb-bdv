@@ -10,9 +10,7 @@ import mpicbg.spim.data.generic.sequence.AbstractSequenceDescription;
 import mpicbg.spim.data.generic.sequence.BasicViewSetup;
 import mpicbg.spim.data.generic.sequence.ImgLoaderHints;
 import mpicbg.spim.data.sequence.TimePoint;
-import net.imglib2.Cursor;
 import net.imglib2.Dimensions;
-import net.imglib2.IterableInterval;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
 import net.imglib2.img.ImgFactory;
@@ -34,9 +32,6 @@ import org.scijava.plugin.Plugin;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.ShortBuffer;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -188,7 +183,6 @@ public class KlbDownsampler< T extends RealType< T > & NativeType< T > > impleme
 
         // downsample images
         log.info( "Starting downsampling" );
-        final long[] klbDims = { 0, 0, 0, 1, 1 };
         final float[] klbSampling = { 1, 1, 1, 1, 1 };
         for ( final TimePoint tp : seq.getTimePoints().getTimePointsOrdered() ) {
             final int t = tp.getId();
@@ -221,18 +215,14 @@ public class KlbDownsampler< T extends RealType< T > & NativeType< T > > impleme
 
                     Downsample.downsample( currentImage, downsampledImage, scales[ level ] );
 
-                    final ByteBuffer buffer = convertToBytes( downsampledImage );
                     final String filePath = resolver.getFilePath( t, viewSetupId, level );
                     log.debug( filePath );
 
-                    klbDims[ 0 ] = currentDims[ 0 ];
-                    klbDims[ 1 ] = currentDims[ 1 ];
-                    klbDims[ 2 ] = currentDims[ 2 ];
                     klbSampling[ 0 ] = ( float ) smpl[ level ][ 0 ];
                     klbSampling[ 1 ] = ( float ) smpl[ level ][ 1 ];
                     klbSampling[ 2 ] = ( float ) smpl[ level ][ 2 ];
                     try {
-                        klb.writeFull( buffer.array(), filePath, klbDims, type, klbSampling, null, null, null );
+                        klb.writeFull( downsampledImage, filePath, klbSampling, null, null, null );
                     } catch ( IOException e ) {
                         log.error( e );
                     }
@@ -244,33 +234,6 @@ public class KlbDownsampler< T extends RealType< T > & NativeType< T > > impleme
         log.info( "Done." );
     }
 
-    private ByteBuffer convertToBytes( final IterableInterval< T > input )
-    {
-        final int bpp = input.firstElement().getBitsPerPixel();
-        final long numBytes = bpp / 8 * input.size();
-        if ( numBytes > Integer.MAX_VALUE - 8 ) {
-            throw new IllegalArgumentException( String.format( "Downsampled image must not be larger than 2GB (uncompressed), but is %d bytes large", numBytes ) );
-        }
-
-        final ByteBuffer bytes = ByteBuffer.allocate( ( int ) numBytes );
-        bytes.order( ByteOrder.LITTLE_ENDIAN );
-        final Cursor< T > cur = input.cursor();
-
-        switch ( bpp ) {
-            case 8:
-                while ( cur.hasNext() )
-                    bytes.put( ( byte ) cur.next().getRealDouble() );
-                return bytes;
-            case 16:
-                final ShortBuffer shorts = bytes.asShortBuffer();
-                while ( cur.hasNext() )
-                    shorts.put( ( short ) cur.next().getRealDouble() );
-                return bytes;
-            default:
-                throw new IllegalArgumentException( "Unknown or unsupported data type." );
-        }
-    }
-    
     private void updateXML()
     {
     	//process the xml file
