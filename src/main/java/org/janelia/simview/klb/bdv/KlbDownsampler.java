@@ -301,7 +301,7 @@ public class KlbDownsampler< T extends RealType< T > & NativeType< T > > impleme
         	Element resolutionTag = new Element("MultiFileNameTag");
         	Element c1 = new Element("dimension"), c2 = new Element("tag"), c3 = new Element("lastIndex");
         	c1.addContent("RESOLUTION_LEVEL");
-        	c2.addContent("RSLVL");
+        	c2.addContent("RESLVL");
         	c3.addContent(Integer.toString(resolutionLevels-1));
         	resolutionTag.addContent(c1);
         	resolutionTag.addContent(c2);
