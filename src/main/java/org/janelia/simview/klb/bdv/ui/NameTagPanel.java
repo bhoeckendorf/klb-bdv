@@ -1,48 +1,239 @@
 package org.janelia.simview.klb.bdv.ui;
 
+import mpicbg.spim.data.sequence.Angle;
+import mpicbg.spim.data.sequence.Channel;
+import mpicbg.spim.data.sequence.Illumination;
 import net.miginfocom.swing.MigLayout;
-import org.janelia.simview.klb.bdv.KlbMultiFileNameTag;
+import org.janelia.simview.klb.KLB;
+import org.janelia.simview.klb.bdv.KlbPartitionResolver;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
-import java.awt.*;
-import java.util.Collections;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
-public class NameTagPanel extends JPanel
+public class NameTagPanel extends JPanel implements ActionListener
 {
-    private String template = "";
-    private final List< KlbMultiFileNameTag > tags;
-    private final JTable table = new JTable();
+    private final KLB klb = KLB.newInstance();
     private final NameTagTableModel model;
+    private final JTextField filePathEdit = new JTextField( Global.getCurrentOrDefaultPath() );
+    private final JButton filePathButton = new JButton( "..." );
+    private final JCheckBox overrideSamplingCheckbox = new JCheckBox( "Manually specify pixel spacing (\u00B5m)" );
+    private final JCheckBox checkTimePointsCheckBox = new JCheckBox( "Check for (and handle) missing files" );
+    private final JTextField
+            pixelSpacingXEdit = new JTextField( "1.000" ),
+            pixelSpacingYEdit = new JTextField( "1.000" ),
+            pixelSpacingZEdit = new JTextField( "1.000" );
+    private final JLabel
+            pixelSpacingXLabel = new JLabel( "x" ),
+            pixelSpacingYLabel = new JLabel( "y" ),
+            pixelSpacingZLabel = new JLabel( "z" );
 
-    public NameTagPanel( final List< KlbMultiFileNameTag > tags )
+    public NameTagPanel()
     {
-        this.tags = tags;
-        Collections.sort( this.tags );
         model = new NameTagTableModel();
-        table.setModel( model );
+        final JTable table = new JTable( model );
+        filePathButton.addActionListener( this );
+        overrideSamplingCheckbox.addActionListener( this );
 
-        setLayout( new MigLayout( "", "[grow]", "[][grow]" ) );
-        add( new JLabel( "Name tags that are blank or not found in template file path will be ignored." ), "cell 0 0" );
-        add( new JScrollPane( table ), "cell 0 1, grow" );
+        pixelSpacingXLabel.setEnabled( false );
+        pixelSpacingYLabel.setEnabled( false );
+        pixelSpacingZLabel.setEnabled( false );
+        pixelSpacingXEdit.setEnabled( false );
+        pixelSpacingYEdit.setEnabled( false );
+        pixelSpacingZEdit.setEnabled( false );
+        pixelSpacingYEdit.setEditable( false );
+        pixelSpacingXEdit.setEditable( false );
+        pixelSpacingZEdit.setEditable( false );
 
-        setMaximumSize( new Dimension( Integer.MAX_VALUE, model.getRowCount() * 35 ) );
+        setLayout( new MigLayout( "nogrid, fillx" ) );
+        add( new JLabel( "Template file" ) );
+        add( filePathEdit, "grow" );
+        add( filePathButton, "wrap" );
+        add( new JLabel( "Name tags that are blank or not found in template file path will be ignored." ), "gaptop para, wrap" );
+        add( new JScrollPane( table ), "grow, wrap" );
+        add( overrideSamplingCheckbox, "gaptop para" );
+        add( new JLabel( "x" ), "gap unrelated" );
+        add( pixelSpacingXEdit, "gap related, growx" );
+        add( new JLabel( "y" ), "gap unrelated" );
+        add( pixelSpacingYEdit, "gap related, growx" );
+        add( new JLabel( "z" ), "gap unrelated" );
+        add( pixelSpacingZEdit, "gap related, growx, wrap" );
+        add( checkTimePointsCheckBox, "gaptop para" );
     }
 
-    public void updateTemplate( final String template )
+    private void updatePixelSpacing()
     {
-        this.template = template;
-        model.updateTemplate();
+        if ( overrideSamplingCheckbox.isSelected() ) {
+            return;
+        }
+        final String filePath = filePathEdit.getText().trim();
+        try {
+            final KLB.Header header = klb.readHeader( filePath );
+            pixelSpacingXEdit.setText( String.format( "%.3f", header.pixelSpacing[ 0 ] ) );
+            pixelSpacingYEdit.setText( String.format( "%.3f", header.pixelSpacing[ 1 ] ) );
+            pixelSpacingZEdit.setText( String.format( "%.3f", header.pixelSpacing[ 2 ] ) );
+        } catch ( IOException e ) {
+            e.printStackTrace();
+        }
+    }
+
+    public KlbPartitionResolver getResolver()
+    {
+        final KlbPartitionResolver resolver = new KlbPartitionResolver();
+
+        final int angleRow = 0;
+        final int channelRow = 1;
+        final int illuminationRow = 2;
+        final int timeRow = 3;
+
+        for ( int angleId = model.getFirstIndex( angleRow ); angleId <= model.getLastIndex( angleRow ); angleId += model.getIndexStride( angleRow ) )
+        {
+            resolver.addAngle( new Angle( angleId ) );
+        }
+        for ( int channelId = model.getFirstIndex( channelRow ); channelId <= model.getLastIndex( channelRow ); channelId += model.getIndexStride( channelRow ) )
+        {
+            resolver.addChannel( new Channel( channelId ) );
+        }
+        for ( int illuminationId = model.getFirstIndex( illuminationRow ); illuminationId <= model.getLastIndex( illuminationRow ); illuminationId += model.getIndexStride( illuminationRow ) )
+        {
+            resolver.addIllumination( new Illumination( illuminationId ) );
+        }
+
+        final String templateFilePath = filePathEdit.getText().trim();
+        final String angleTag = model.getValueAt( angleRow, 1 ).toString();
+        final String channelTag = model.getValueAt( channelRow, 1 ).toString();
+        final String illuminationTag = model.getValueAt( illuminationRow, 1 ).toString();
+        final String timeTag = model.getValueAt( timeRow, 1 ).toString();
+
+        final String[] angleMatchAndFormat = angleTag.isEmpty() ? null : resolver.getTagMatchAndFormat( templateFilePath, angleTag );
+        final String[] channelMatchAndFormat = channelTag.isEmpty() ? null : resolver.getTagMatchAndFormat( templateFilePath, channelTag );
+        final String[] illuminationMatchAndFormat = illuminationTag.isEmpty() ? null : resolver.getTagMatchAndFormat( templateFilePath, illuminationTag );
+        final String[] timeMatchAndFormat = timeTag.isEmpty() ? null : resolver.getTagMatchAndFormat( templateFilePath, timeTag );
+
+        for ( final Angle angle : ( List< Angle > ) resolver.getAngles() ) {
+            String filePath = templateFilePath;
+            if ( angleMatchAndFormat != null ) {
+                filePath = filePath.replaceAll( angleMatchAndFormat[ 0 ], String.format( angleMatchAndFormat[ 1 ], angle.getId() ) );
+            }
+            for ( final Channel channel : ( List< Channel > ) resolver.getChannels() ) {
+                if ( channelMatchAndFormat != null ) {
+                    final String newField = String.format( channelMatchAndFormat[ 1 ], channel.getId() );
+                    filePath = filePath.replaceAll( channelMatchAndFormat[ 0 ], newField );
+                    channelMatchAndFormat[ 0 ] = newField;
+                }
+                for ( final Illumination illumination : ( List< Illumination > ) resolver.getIlluminations() ) {
+                    if ( illuminationMatchAndFormat != null ) {
+                        final String newField = String.format( illuminationMatchAndFormat[ 1 ], illumination.getId() );
+                        filePath = filePath.replaceAll( illuminationMatchAndFormat[ 0 ], newField );
+                        illuminationMatchAndFormat[ 0 ] = newField;
+                    }
+                    KlbPartitionResolver.KlbViewSetupConfig setup = null;
+                    if ( timeMatchAndFormat != null ) {
+                        setup = resolver.addViewSetup( filePath, timeTag );
+                    } else {
+                        setup = resolver.addViewSetup( filePath );
+                    }
+                    if ( setup == null ) {
+                        continue;
+                    }
+                    setup.setName( "" + setup.getId() );
+                    setup.setAngleId( angle.getId() );
+                    setup.setChannelId( channel.getId() );
+                    setup.setIlluminationId( illumination.getId() );
+                }
+            }
+        }
+
+        final List< Integer > timePoints = new ArrayList< Integer >();
+        for ( int t = Integer.parseInt( model.getValueAt( 3, 2 ).toString() ); t <= Integer.parseInt( model.getValueAt( 3, 3 ).toString() ); t += Integer.parseInt( model.getValueAt( 3, 4 ).toString() ) )
+        {
+            timePoints.add( t );
+        }
+        for ( final KlbPartitionResolver.KlbViewSetupConfig config : ( List< KlbPartitionResolver.KlbViewSetupConfig > ) resolver.getViewSetupConfigs() ) {
+            if ( checkTimePointsCheckBox.isSelected() ) {
+                final List< Integer > tps = new ArrayList< Integer >();
+                for ( final int t : timePoints ) {
+                    final String fp = config.getFilePath( t );
+                    if ( new File( fp ).exists() ) {
+                        tps.add( t );
+                    }
+                }
+                config.setTimePoints( tps );
+            } else {
+                config.setTimePoints( timePoints );
+            }
+        }
+        if ( overrideSamplingCheckbox.isSelected() ) {
+            final double[] pixelSpacing = new double[ 3 ];
+            pixelSpacing[ 0 ] = Double.parseDouble( pixelSpacingXEdit.getText() );
+            pixelSpacing[ 1 ] = Double.parseDouble( pixelSpacingYEdit.getText() );
+            pixelSpacing[ 2 ] = Double.parseDouble( pixelSpacingZEdit.getText() );
+            for ( final KlbPartitionResolver.KlbViewSetupConfig config : ( List< KlbPartitionResolver.KlbViewSetupConfig > ) resolver.getViewSetupConfigs() ) {
+                config.setPixelSpacing( pixelSpacing );
+            }
+        }
+        return resolver;
+    }
+
+    @Override
+    public void actionPerformed( final ActionEvent e )
+    {
+        final Object source = e.getSource();
+        if ( source == filePathButton ) {
+            final JFileChooser chooser = new JFileChooser( Global.getCurrentOrDefaultPath( filePathEdit.getText().trim() ) );
+            chooser.setFileSelectionMode( JFileChooser.FILES_ONLY );
+            if ( chooser.showOpenDialog( this ) == JFileChooser.APPROVE_OPTION ) {
+                final String filePath = chooser.getSelectedFile().getAbsolutePath();
+                filePathEdit.setText( filePath );
+                Global.updateCurrentPath( filePath );
+                model.updateTemplate();
+                updatePixelSpacing();
+            }
+        } else if ( source == overrideSamplingCheckbox ) {
+            if ( overrideSamplingCheckbox.isSelected() ) {
+                pixelSpacingXLabel.setEnabled( true );
+                pixelSpacingYLabel.setEnabled( true );
+                pixelSpacingZLabel.setEnabled( true );
+                pixelSpacingXEdit.setEnabled( true );
+                pixelSpacingYEdit.setEnabled( true );
+                pixelSpacingZEdit.setEnabled( true );
+                pixelSpacingYEdit.setEditable( true );
+                pixelSpacingXEdit.setEditable( true );
+                pixelSpacingZEdit.setEditable( true );
+            } else {
+                updatePixelSpacing();
+                pixelSpacingXLabel.setEnabled( false );
+                pixelSpacingYLabel.setEnabled( false );
+                pixelSpacingZLabel.setEnabled( false );
+                pixelSpacingXEdit.setEnabled( false );
+                pixelSpacingYEdit.setEnabled( false );
+                pixelSpacingZEdit.setEnabled( false );
+                pixelSpacingYEdit.setEditable( false );
+                pixelSpacingXEdit.setEditable( false );
+                pixelSpacingZEdit.setEditable( false );
+            }
+        }
     }
 
 
     private class NameTagTableModel extends DefaultTableModel
     {
+        // This instance exists solely to gain access to its 'getTagMatchAndFormat' function
+        private final KlbPartitionResolver resolver = new KlbPartitionResolver();
         private final String[] columnHeaders = {
                 "Dimension", "File Path Tag", "First", "Last", "Stride" };
+        private final Object[][] data = {
+                { "Angle/Tile", "Color channel", "Illumination", "Time" },
+                { "CM", "CHN", "", "TM" },
+                { "", "", "", "" },
+                { "", "", "", "" },
+                { "", "", "", "" }
+        };
 
         public void updateTemplate()
         {
@@ -53,29 +244,41 @@ public class NameTagPanel extends JPanel
 
         private void updateTemplate( final int row )
         {
-            final KlbMultiFileNameTag tag = tags.get( row );
-            if ( tag.tag.trim().isEmpty() ) {
+            final String tagValue = getValueAt( row, 1 ).toString();
+            if ( tagValue.isEmpty() ) {
+                for ( int col = 2; col < getColumnCount(); ++col ) {
+                    setValueAt( "n/a", row, col );
+                }
                 return;
             }
-            final Pattern pattern = Pattern.compile( String.format( "%s\\d+", tag.tag ) );
-            final Matcher matcher = pattern.matcher( template );
-            if ( matcher.find() ) {
-                final String subst = template.substring( matcher.start(), matcher.end() );
-                final int last = Integer.parseInt( subst.substring( tag.tag.length() ) );
-                setValueAt( last, row, 3 );
+            final String template = filePathEdit.getText().trim();
+            final String[] matchAndFormat = resolver.getTagMatchAndFormat( template, tagValue );
+            if ( matchAndFormat == null ) {
+                for ( int col = 2; col < getColumnCount(); ++col ) {
+                    setValueAt( "n/a", row, col );
+                }
+                return;
+            }
+            final int last = Integer.parseInt( matchAndFormat[ 0 ].substring( tagValue.length() ) );
+            if ( getValueAt( row, 2 ).toString().isEmpty() || getValueAt( row, 2 ).toString().equals( "n/a" ) ) {
+                setValueAt( 0, row, 2 );
+            }
+            setValueAt( last, row, 3 );
+            if ( getValueAt( row, 4 ).toString().isEmpty() || getValueAt( row, 4 ).toString().equals( "n/a" ) ) {
+                setValueAt( 1, row, 4 );
             }
         }
 
         @Override
         public int getColumnCount()
         {
-            return 5;
+            return 5; //columnHeaders.length;
         }
 
         @Override
         public int getRowCount()
         {
-            return tags.size();
+            return 4; //data.length;
         }
 
         @Override
@@ -87,75 +290,60 @@ public class NameTagPanel extends JPanel
         @Override
         public void setValueAt( final Object value, final int row, final int column )
         {
-            final KlbMultiFileNameTag tag = tags.get( row );
-            switch ( column ) {
-                case 1:
-                    tag.tag = value.toString();
-                    break;
-                case 2:
-                    tag.first = Integer.parseInt( value.toString() );
-                    break;
-                case 3:
-                    tag.last = Integer.parseInt( value.toString() );
-                    break;
-                case 4:
-                    tag.stride = Integer.parseInt( value.toString() );
-                    break;
-                default:
-                    throw new IndexOutOfBoundsException();
-            }
+            data[ column ][ row ] = value;
             fireTableCellUpdated( row, column );
-            if ( column == 0 || column == 2 ) {
+            if ( column == 1 ) {
                 updateTemplate( row );
+            } else if ( column == 2 || column == 3 ) {
+                try {
+                    final int first = getValueAt( row, column ) instanceof Integer ? ( Integer ) getValueAt( row, column ) : Integer.parseInt( getValueAt( row, column ).toString() );
+                    final int last = getValueAt( row, column ) instanceof Integer ? ( Integer ) getValueAt( row, column ) : Integer.parseInt( getValueAt( row, column ).toString() );
+                    if ( first > last ) {
+                        setValueAt( last, 3, row );
+                    }
+                } catch ( NumberFormatException e ) {
+                }
             }
         }
 
         @Override
         public Object getValueAt( final int row, final int column )
         {
-            final KlbMultiFileNameTag tag = tags.get( row );
-            switch ( column ) {
-                case 0:
-                    return tag.dimension.toString();
-                case 1:
-                    return tag.tag;
-                case 2:
-                    return tag.first;
-                case 3:
-                    return tag.last;
-                case 4:
-                    return tag.stride;
-                default:
-                    throw new IndexOutOfBoundsException();
-            }
-        }
-
-        @Override
-        public Class< ? > getColumnClass( final int column )
-        {
-            final KlbMultiFileNameTag tag = tags.get( 0 );
-            switch ( column ) {
-                case 0:
-                    return tag.dimension.toString().getClass();
-                case 1:
-                    return tag.tag.getClass();
-                case 2:
-                    return tag.first.getClass();
-                case 3:
-                    return tag.last.getClass();
-                case 4:
-                    return tag.stride.getClass();
-                default:
-                    throw new IndexOutOfBoundsException();
-            }
+            return data[ column ][ row ];
         }
 
         @Override
         public boolean isCellEditable( final int row, final int column )
         {
-            if ( tags.get( row ).dimension == KlbMultiFileNameTag.Dimension.RESOLUTION_LEVEL && (column == 2 || column == 4) )
-                return false;
-            return column != 0;
+            return column != 0 && !getValueAt( row, column ).equals( "n/a" );
+        }
+
+        private int getIndex( final int row, final int column )
+        {
+            final Object value = getValueAt( row, column );
+            if ( value instanceof Integer ) {
+                return ( Integer ) value;
+            }
+            try {
+                return Integer.parseInt( value.toString() );
+            } catch ( NumberFormatException e ) {
+                return column == 4 ? 1 : 0;
+            }
+        }
+
+        public int getFirstIndex( final int row )
+        {
+            return getIndex( row, 2 );
+        }
+
+        public int getLastIndex( final int row )
+        {
+            return getIndex( row, 3 );
+        }
+
+        public int getIndexStride( final int row )
+        {
+            return getIndex( row, 4 );
         }
     }
 }

@@ -1,252 +1,215 @@
 package org.janelia.simview.klb.bdv;
 
+import mpicbg.spim.data.sequence.Angle;
+import mpicbg.spim.data.sequence.Channel;
+import mpicbg.spim.data.sequence.Illumination;
+import net.imagej.ImgPlus;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
 import org.janelia.simview.klb.KLB;
-import org.janelia.simview.klb.jni.KlbImageIO;
-import org.janelia.simview.klb.jni.KlbRoi;
 
-import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Defines a dataset consisting of one or multiple KLB files.
+ * Defines a data set consisting of one or multiple KLB files.
  * <p>
  * Interfaces with Fiji's Big Data Viewer and SPIM plugins through
  * KlbSpimDataAdapter, which generates a SpimData2 instance that can
  * be consumed by Fiji and/or saved to XML.
  * <p>
  * Returns metadata that is apparent from the file system, such as the
- * number of ViewSetups, time points and scales.
+ * number of resolution levels.
  * <p>
  * Retrieves basic image-related metadata (image dimensions, block
- * dimensions, sampling).
- * <p>
- * Configures provided KlbImageIO and KlbRoi instances to read a block
- * defined by time point, ViewSetup, level, ROI start and
- * ROI dimensions.
+ * dimensions, pixel spacing).
  * <p>
  * Uses a user-defined path name tag pattern.
  */
 public class KlbPartitionResolver< T extends RealType< T > & NativeType< T > >
 {
-    protected final String[] viewSetupTemplates;
-    protected final int[] angleIds, channelIds, illuminationIds;
-    protected final String[] angleNames, channelNames, illuminationNames;
-    protected String timeTag, timeMatch, timeFormat;
-    protected String resLvlTag, resLvlMatch, resLvlFormat;
-    private double[][] sampling = null;
-    private int firstTimePoint = 0, lastTimePoint = 0;
-    private int numResolutionLevels = 1;
     private final KLB klb = KLB.newInstance();
+    private final List< KlbViewSetupConfig > viewSetupConfigs = new ArrayList< KlbViewSetupConfig >();
+    private final Map< Integer, Angle > angles = new HashMap< Integer, Angle >();
+    private final Map< Integer, Channel > channels = new HashMap< Integer, Channel >();
+    private final Map< Integer, Illumination > illuminations = new HashMap< Integer, Illumination >();
+    private int firstTimePoint = 0, lastTimePoint = 0, maxNumResolutionLevels = 0;
 
     /**
-     * Constructs a KlbPartitionResolver from a file system path following
-     * a name tag pattern.
+     * Add a multi file ViewSetup to the data set, each file is a time point
      *
-     * @param template absolute file system path to a data file (e.g. '/folder/Data1Time000Chn00.klb')
-     * @param nameTags list of KlbMultiFileNameTag instances
+     * @param timeSeriesTemplateFile absolute file system path to representative file of this ViewSetup
+     * @param timeTag                tag in the file system path that denotes the time index of the file
+     *                               e.g. "t" for "t001"
+     * @return the newly added ViewSetup or null if its configuration failed for any reason,
+     * e.g. template file does not exist or does not contain the value of timeTag in its file system path
      */
-    public KlbPartitionResolver( final String template, final List< KlbMultiFileNameTag > nameTags )
+    public KlbViewSetupConfig addViewSetup( final String timeSeriesTemplateFile, final String timeTag )
     {
-        // NameTags that are found in template file path
-        final List< KlbMultiFileNameTag > foundTags = new ArrayList< KlbMultiFileNameTag >();
-
-        // Format of KlbMultiFileNameTag in template file path, in same order as 'foundTags', eg. 'TM%06d'
-        final List< String > formats = new ArrayList< String >();
-
-        // Depth
-        final List< Integer > depths = new ArrayList< Integer >();
-        
-        for ( final KlbMultiFileNameTag tag : nameTags ) {
-            if ( tag.tag.trim().isEmpty() ) {
-                continue;
-            }
-            final Pattern pattern = Pattern.compile( String.format( "%s\\d+", tag.tag ) );
-            final Matcher matcher = pattern.matcher( template );
-            
-            //resolution level is parsed with priority - always use the resLvlTag specified in the table
-            if ( tag.dimension == KlbMultiFileNameTag.Dimension.RESOLUTION_LEVEL && tag.last > 0) {
-                resLvlTag = tag.tag;
-                resLvlMatch = null;
-                numResolutionLevels = tag.last + 1;
-            } 
-            if ( matcher.find() ) {
-                final String match = template.substring( matcher.start(), matcher.end() );
-                final String format = String.format( "%s%s%dd", tag.tag, "%0", match.length() - tag.tag.length() );
-                final int depth = 1 + (tag.last - tag.first) / tag.stride;
-                if ( tag.dimension == KlbMultiFileNameTag.Dimension.TIME ) {
-                    timeTag = tag.tag;
-                    timeMatch = match;
-                    timeFormat = format;
-                    firstTimePoint = tag.first;
-                    lastTimePoint = tag.last;
-                } else if ( tag.dimension == KlbMultiFileNameTag.Dimension.RESOLUTION_LEVEL ) {
-                    resLvlTag = tag.tag;
-                    resLvlMatch = match;
-                    resLvlFormat = format;
-                    numResolutionLevels = tag.last + 1;
-                } else {
-                    if ( depth > 1 ) {
-                        foundTags.add( tag );
-                        formats.add( format );
-                        depths.add( depth );
-                    }
-                }
-            }
-        }
-
-        int numViewSetups = 1;
-        for ( final int depth : depths ) {
-            numViewSetups *= depth;
-        }
-
-        viewSetupTemplates = new String[ numViewSetups ];
-        angleIds = new int[ numViewSetups ];
-        channelIds = new int[ numViewSetups ];
-        illuminationIds = new int[ numViewSetups ];
-        angleNames = new String[ numViewSetups ];
-        channelNames = new String[ numViewSetups ];
-        illuminationNames = new String[ numViewSetups ];
-
-        for ( int setup = 0; setup < numViewSetups; ++setup ) {
-            String fn = template;
-            int angleId = 0, channelId = 0, illuminationId = 0;
-            String angleName = "0", channelName = "0", illuminationName = "0";
-            for ( int d = 0; d < foundTags.size(); ++d ) {
-                final KlbMultiFileNameTag tag = foundTags.get( d );
-                final int depth = depths.get( d );
-
-                int depthHigherDims = 1;
-                for ( int i = d + 1; i < foundTags.size(); ++i ) {
-                    depthHigherDims *= depths.get( i );
-                }
-
-                int id = setup / depthHigherDims;
-                while ( id >= depth ) {
-                    id -= depth;
-                }
-                final int name = id * tag.stride;
-
-                switch ( tag.dimension ) {
-                    case ANGLE:
-                        angleId = id;
-                        angleName = "" + name;
-                        break;
-                    case CHANNEL:
-                        channelId = id;
-                        channelName = "" + name;
-                        break;
-                    case ILLUMINATION:
-                        illuminationId = id;
-                        illuminationName = "" + name;
-                        break;
-                }
-
-                fn = fn.replaceAll( String.format( "%s\\d+", tag.tag ), String.format( formats.get( d ), name ) );
-            }
-            
-            //remove RESLVL tag if specified file is higher res level
-            if ( resLvlMatch != null )
-            	fn = fn.replace( "."+resLvlMatch , "");
-            
-            viewSetupTemplates[ setup ] = fn;
-            angleIds[ setup ] = angleId;
-            channelIds[ setup ] = channelId;
-            illuminationIds[ setup ] = illuminationId;
-            angleNames[ setup ] = angleName;
-            channelNames[ setup ] = channelName;
-            illuminationNames[ setup ] = illuminationName;
-        }
-    }
-
-    public KlbPartitionResolver( final String[] viewSetupTemplates, final String timeTag, final int firstTimePoint, final int lastTimePoint, final String resolutionLevelTag, final int numResolutionLevels )
-    {
-        this.viewSetupTemplates = viewSetupTemplates;
-        this.timeTag = timeTag.trim().isEmpty() ? null : timeTag;
-        this.firstTimePoint = firstTimePoint;
-        this.lastTimePoint = lastTimePoint;
-        this.resLvlTag = resolutionLevelTag;
-        this.numResolutionLevels = numResolutionLevels;
-        angleIds = channelIds = illuminationIds = null;
-        angleNames = channelNames = illuminationNames = null;
-
-        final Pattern pattern = Pattern.compile( String.format( "%s\\d+", this.timeTag ) );
-        for ( final String template : viewSetupTemplates ) {
-            final Matcher matcher = pattern.matcher( template );
-            if ( matcher.find() ) {
-                timeMatch = template.substring( matcher.start(), matcher.end() );
-                timeFormat = String.format( "%s%s%dd", this.timeTag, "%0", timeMatch.length() - this.timeTag.length() );
-                break;
-            }
-        }
-    }
-
-    public void specifySampling( final double[][] sampling )
-    {
-        this.sampling = sampling;
-    }
-
-    public int getNumViewSetups()
-    {
-        return viewSetupTemplates.length;
-    }
-
-    public String getViewSetupName( final int viewSetup )
-    {
-        return new File( viewSetupTemplates[ viewSetup ] ).getName().replace( ".klb", "" );
-    }
-
-    public T getViewSetupImageType( final int viewSetup )
-    {
-        final String fp = getFilePath( getFirstTimePoint(), viewSetup, 0 );
-        try {
-            return ( T ) klb.readHeader( fp ).dataType;
-        } catch ( IOException e ) {
-            e.printStackTrace();
+        final KlbViewSetupConfig setup = new KlbViewSetupConfig();
+        if ( setup.setTimeSeriesTemplateFile( timeSeriesTemplateFile, timeTag ) ) {
+            viewSetupConfigs.add( setup );
+            updateMetadata();
+            return setup;
         }
         return null;
     }
 
-    public int getAngleId( final int viewSetup )
+    /**
+     * Add a single file, single time point ViewSetup to the data set
+     *
+     * @param singleFile absolute file system path to file of this ViewSetup
+     * @return the newly added ViewSetup or null if its configuration failed for any reason,
+     * e.g. file does not exist
+     */
+    public KlbViewSetupConfig addViewSetup( final String singleFile )
     {
-        return angleIds[ viewSetup ];
+        final KlbViewSetupConfig setup = new KlbViewSetupConfig();
+        if ( setup.setSingleFile( singleFile ) ) {
+            viewSetupConfigs.add( setup );
+            updateMetadata();
+            return setup;
+        }
+        return null;
     }
 
-    public int getChannelId( final int viewSetup )
+    public void removeViewSetup( final KlbViewSetupConfig config )
     {
-        return channelIds[ viewSetup ];
+        viewSetupConfigs.remove( config );
+        updateMetadata();
     }
 
-    public int getIlluminationId( final int viewSetup )
+    public void removeViewSetup( final int viewSetupId )
     {
-        return illuminationIds[ viewSetup ];
+        viewSetupConfigs.remove( viewSetupId );
+        updateMetadata();
     }
 
-    public String getAngleName( final int viewSetup )
+    /**
+     * Update file system level metadata, specifically nr of time points and resolution levels.
+     * Is called each time a ViewSetupConfig is added, removed, or has its timePoint member field modified
+     */
+    private void updateMetadata()
     {
-        return angleNames[ viewSetup ];
+        maxNumResolutionLevels = 0;
+        for ( final KlbViewSetupConfig config : viewSetupConfigs ) {
+            final List< Integer > timePoints = config.getTimePoints();
+            if ( timePoints == null ) {
+                firstTimePoint = lastTimePoint = 0;
+            } else {
+                if ( timePoints.get( 0 ) < firstTimePoint )
+                    firstTimePoint = timePoints.get( 0 );
+                if ( timePoints.get( timePoints.size() - 1 ) > lastTimePoint )
+                    lastTimePoint = timePoints.get( timePoints.size() - 1 );
+            }
+            if ( config.getNumResolutionLevels() > maxNumResolutionLevels )
+                maxNumResolutionLevels = config.getNumResolutionLevels();
+        }
     }
 
-    public String getChannelName( final int viewSetup )
+    public List< KlbViewSetupConfig > getViewSetupConfigs()
     {
-        return channelNames[ viewSetup ];
+        return viewSetupConfigs;
     }
 
-    public String getIlluminationName( final int viewSetup )
+    public int getNumViewSetups()
     {
-        return illuminationNames[ viewSetup ];
+        return viewSetupConfigs.size();
     }
 
+    public KlbViewSetupConfig getViewSetupConfig( final int viewSetupId )
+    {
+        return viewSetupConfigs.get( viewSetupId );
+    }
+
+    public List< Angle > getAngles()
+    {
+        final List< Angle > list = new ArrayList< Angle >( angles.values() );
+        Collections.sort( list );
+        return list;
+    }
+
+    public Angle getAngle( final int angleId )
+    {
+        return angles.get( angleId );
+    }
+
+    /**
+     * Add an Angle to the data set.
+     * <p>
+     * This is only needed when creating a new data set definition to be serialized to XML.
+     *
+     * @param angle the Angle
+     */
+    public void addAngle( final Angle angle )
+    {
+        angles.put( angle.getId(), angle );
+    }
+
+    public List< Channel > getChannels()
+    {
+        final List< Channel > list = new ArrayList< Channel >( channels.values() );
+        Collections.sort( list );
+        return list;
+    }
+
+    public Channel getChannel( final int channelId )
+    {
+        return channels.get( channelId );
+    }
+
+    /**
+     * Add a color Channel to the data set.
+     * <p>
+     * This is only needed when creating a new data set definition to be serialized to XML.
+     *
+     * @param channel the color Channel
+     */
+    public void addChannel( final Channel channel )
+    {
+        channels.put( channel.getId(), channel );
+    }
+
+    public List< Illumination > getIlluminations()
+    {
+        final List< Illumination > list = new ArrayList< Illumination >( illuminations.values() );
+        Collections.sort( list );
+        return list;
+    }
+
+    public Illumination getIllumination( final int illuminationId )
+    {
+        return illuminations.get( illuminationId );
+    }
+
+    /**
+     * Add an Illumination mode to the data set.
+     * This is only needed when creating a new data set definition to be serialized to XML.
+     *
+     * @param illumination the Illumination mode
+     */
+    public void addIllumination( final Illumination illumination )
+    {
+        illuminations.put( illumination.getId(), illumination );
+    }
+
+    /**
+     * Returns the global first time point index of all configures ViewSetups
+     *
+     * @return the global first time point index of all configures ViewSetups
+     */
     public int getFirstTimePoint()
     {
         return firstTimePoint;
     }
 
+    /**
+     * Returns the global last time point index of all configures ViewSetups
+     *
+     * @return the global last time point index of all configures ViewSetups
+     */
     public int getLastTimePoint()
     {
         return lastTimePoint;
@@ -254,7 +217,7 @@ public class KlbPartitionResolver< T extends RealType< T > & NativeType< T > >
 
     /**
      * Returns the number of available resolution levels for the
-     * given ViewSetup (channel).
+     * given ViewSetup.
      * Should be 1 (not 0) if only full resolution, original images
      * are available.
      *
@@ -263,24 +226,37 @@ public class KlbPartitionResolver< T extends RealType< T > & NativeType< T > >
      */
     public int getNumResolutionLevels( final int viewSetup )
     {
-        return getMaxNumResolutionLevels();
+        return viewSetupConfigs.get( viewSetup ).getNumResolutionLevels();
     }
 
     /**
      * Returns the highest number of available resolution levels
-     * across all ViewSetups (channelIds).
+     * across all ViewSetups.
      *
      * @return highest number of resolution levels across all channelIds
      */
     public int getMaxNumResolutionLevels()
     {
-        return numResolutionLevels;
+        return maxNumResolutionLevels;
     }
 
     /**
-     * Writes the dimensions (xyz) of the image defined by ViewSetup index,
-     * time point and level into out. Returns false in case of failure
-     * (e.g. file not found).
+     * Writes the image dimensions (x,y,z) of the defined ViewSetup and level into out.
+     * Does not read it from file but uses a cached value.
+     *
+     * @param viewSetup ViewSetup index,
+     * @param level     resolution level
+     * @param out       target
+     */
+    public void getImageSize( final int viewSetup, final int level, final long[] out )
+    {
+        viewSetupConfigs.get( viewSetup ).getImageSize( level, out );
+    }
+
+    /**
+     * Reads the header of the image defined by ViewSetup index, time point and level,
+     * and writes the image dimensions (x,y,z) into out.
+     * Returns false in case of failure (e.g. file not found).
      *
      * @param timePoint time point
      * @param viewSetup ViewSetup index,
@@ -288,25 +264,28 @@ public class KlbPartitionResolver< T extends RealType< T > & NativeType< T > >
      * @param out       target
      * @return whether or not successful
      */
-    public boolean getImageDimensions( final int timePoint, final int viewSetup, final int level, final long[] out )
+    public boolean getImageSize( final int timePoint, final int viewSetup, final int level, final long[] out )
     {
-        final String filePath = getFilePath( timePoint, viewSetup, level );
-        try {
-            final long[] dims = klb.readHeader( filePath ).imageSize;
-            out[ 0 ] = dims[ 0 ];
-            out[ 1 ] = dims[ 1 ];
-            out[ 2 ] = dims[ 2 ];
-            return true;
-        } catch ( IOException e ) {
-            e.printStackTrace();
-            return false;
-        }
+        return viewSetupConfigs.get( viewSetup ).getImageSize( timePoint, level, out );
     }
 
     /**
-     * Writes the block dimensions (xyz) of the image defined by ViewSetup index,
-     * time point and level into out. Returns false in case of failure
-     * (e.g. file not found).
+     * Writes the block dimensions (x,y,z) of the defined ViewSetup and level into out.
+     * Does not read it from file but uses a cached value.
+     *
+     * @param viewSetup ViewSetup index,
+     * @param level     resolution level
+     * @param out       target
+     */
+    public void getBlockSize( final int viewSetup, final int level, final int[] out )
+    {
+        viewSetupConfigs.get( viewSetup ).getBlockSize( level, out );
+    }
+
+    /**
+     * Reads the header of the image defined by ViewSetup index, time point and level,
+     * and writes the block dimensions (x,y,z) into out.
+     * Returns false in case of failure (e.g. file not found).
      *
      * @param timePoint time point
      * @param viewSetup ViewSetup index,
@@ -314,25 +293,28 @@ public class KlbPartitionResolver< T extends RealType< T > & NativeType< T > >
      * @param out       target
      * @return whether or not successful
      */
-    public boolean getBlockDimensions( final int timePoint, final int viewSetup, final int level, final int[] out )
+    public boolean getBlockSize( final int timePoint, final int viewSetup, final int level, final int[] out )
     {
-        final String filePath = getFilePath( timePoint, viewSetup, level );
-        try {
-            final long[] dims = klb.readHeader( filePath ).blockSize;
-            out[ 0 ] = ( int ) dims[ 0 ];
-            out[ 1 ] = ( int ) dims[ 1 ];
-            out[ 2 ] = ( int ) dims[ 2 ];
-            return true;
-        } catch ( IOException e ) {
-            e.printStackTrace();
-            return false;
-        }
+        return viewSetupConfigs.get( viewSetup ).getBlockSize( timePoint, level, out );
     }
 
     /**
-     * Writes the spatial sampling ("voxel size") of the image defined by
-     * ViewSetup index, time point and level into out. Returns false in
-     * case of failure (e.g. file not found).
+     * Writes the pixel spacing (x,y,z) of the defined ViewSetup and level into out.
+     * Does not read it from file but uses a cached value.
+     *
+     * @param viewSetup ViewSetup index,
+     * @param level     resolution level
+     * @param out       target
+     */
+    public void getPixelSpacing( final int viewSetup, final int level, final double[] out )
+    {
+        viewSetupConfigs.get( viewSetup ).getPixelSpacing( level, out );
+    }
+
+    /**
+     * Reads the header of the image defined by ViewSetup index, time point and level,
+     * and writes the pixel spacing (x,y,z, in microns) into out.
+     * Returns false in case of failure (e.g. file not found).
      *
      * @param timePoint time point
      * @param viewSetup ViewSetup index,
@@ -340,68 +322,413 @@ public class KlbPartitionResolver< T extends RealType< T > & NativeType< T > >
      * @param out       target
      * @return whether or not successful
      */
-    public boolean getSampling( final int timePoint, final int viewSetup, final int level, final double[] out )
+    public boolean getPixelSpacing( final int timePoint, final int viewSetup, final int level, final double[] out )
     {
-        if ( level == 0 && sampling != null ) {
-            out[ 0 ] = sampling[ level ][ 0 ];
-            out[ 1 ] = sampling[ level ][ 1 ];
-            out[ 2 ] = sampling[ level ][ 2 ];
-            return true;
-        }
-        final String filePath = getFilePath( timePoint, viewSetup, level );
-        try {
-            final float[] smpl = klb.readHeader( filePath ).pixelSpacing;
-            out[ 0 ] = smpl[ 0 ];
-            out[ 1 ] = smpl[ 1 ];
-            out[ 2 ] = smpl[ 2 ];
-            return true;
-        } catch ( IOException e ) {
-            e.printStackTrace();
-            return false;
-        }
-    }
-
-    /**
-     * Configures provided KlbImageIO and KlbRoi instances to read a
-     * block defined by time point, ViewSetup index, resolution level,
-     * block dimensions and block start.
-     *
-     * @param timePoint  time point index
-     * @param viewSetup  ViewSetup index
-     * @param level      resolution level
-     * @param dimensions block dimensions
-     * @param min        block start
-     * @param io         reader
-     * @param roi        ROI
-     */
-    @Deprecated
-    public void set( final int timePoint, final int viewSetup, final int level, final int[] dimensions, final long[] min, final KlbImageIO io, final KlbRoi roi )
-    {
-        io.setFilename( getFilePath( timePoint, viewSetup, level ) );
-        roi.setXyzctUB( new long[]{
-                min[ 0 ] + dimensions[ 0 ] - 1,
-                min[ 1 ] + dimensions[ 1 ] - 1,
-                min[ 2 ] + dimensions[ 2 ] - 1,
-                0, 0 } );
-        roi.setXyzctLB( new long[]{ min[ 0 ], min[ 1 ], min[ 2 ], 0, 0 } );
+        return viewSetupConfigs.get( viewSetup ).getPixelSpacing( timePoint, level, out );
     }
 
     public String getFilePath( final int timePoint, final int viewSetup, final int level )
     {
-        String fn = viewSetupTemplates[ viewSetup ];
-        if ( timeMatch != null ) {
-            fn = fn.replaceAll( timeMatch, String.format( timeFormat, timePoint ) );
-        }
+        return viewSetupConfigs.get( viewSetup ).getFilePath( timePoint, level );
+    }
 
-        if ( level == 0 && resLvlMatch != null ) {
-            fn = fn.replace( "." + resLvlMatch, "" );
-        } else if ( level > 0 ) {
-            if ( resLvlMatch == null ) {
-                fn = fn.substring( 0, fn.lastIndexOf( ".klb" ) ) + String.format( ".RESLVL%d.klb", level );
-            } else {
-                fn = fn.replaceAll( resLvlMatch, String.format( resLvlFormat, level ) );
+    public ImgPlus< T > getImage( final int timePoint, final int viewSetup, final int level )
+            throws IOException
+    {
+        return viewSetupConfigs.get( viewSetup ).getImage( timePoint, level );
+    }
+
+    /**
+     * Returns {"t045", "t%03d"} for input arguments "/path/to/dataset1t045channel7.klb", "t".
+     * Is used to get the file path pattern of multi file ViewSetups and get appropriate paths to read files as needed.
+     *
+     * @param template
+     * @param tag
+     * @return
+     */
+    public String[] getTagMatchAndFormat( final String template, final String tag )
+    {
+        final Pattern pattern = Pattern.compile( String.format( "%s\\d+", tag ) );
+        final Matcher matcher = pattern.matcher( template );
+        if ( matcher.find() ) {
+            final String tagMatch = template.substring( matcher.start(), matcher.end() );
+            final String tagFormat = String.format( "%s%s%dd", tag, "%0", tagMatch.length() - tag.length() );
+            return new String[]{ tagMatch, tagFormat };
+        } else {
+            return null;
+        }
+    }
+
+    public List< Integer > getTimePoints( final int first, final int last )
+    {
+        return getTimePoints( first, last, 1 );
+    }
+
+    public List< Integer > getTimePoints( final int first, final int last, final int stride )
+    {
+        final List< Integer > timePoints = new ArrayList< Integer >();
+        for ( int t = first; t <= last; t += stride ) {
+            timePoints.add( t );
+        }
+        return timePoints;
+    }
+
+    /**
+     * Turns a string to configure time points in the format "first[-last[:stride]]" into a List of Integers
+     *
+     * @param timePointString
+     * @return
+     */
+    public List< Integer > getTimePoints( final String timePointString )
+    {
+        final List< Integer > timePoints = new ArrayList< Integer >();
+        final Set< Integer > timePointSet = new HashSet< Integer >();
+        final String[] timePeriods = timePointString.replaceAll( "\\s", "" ).split( "," );
+        for ( final String timePeriod : timePeriods ) {
+            final String[] extremaAndStride = timePeriod.split( ":" );
+            if ( extremaAndStride.length < 1 || extremaAndStride.length > 2 ) {
+                return timePoints;
+            }
+            final int stride = extremaAndStride.length == 2 ? Integer.parseInt( extremaAndStride[ 2 ] ) : 1;
+
+            final String[] minAndMax = extremaAndStride[ 0 ].split( "-" );
+            if ( minAndMax.length < 1 || minAndMax.length > 2 ) {
+                return timePoints;
+            }
+            final int min = Integer.parseInt( minAndMax[ 0 ] );
+            final int max = minAndMax.length == 2 ? Integer.parseInt( minAndMax[ 1 ] ) : min;
+
+            for ( int t = min; t <= max; t += stride ) {
+                timePointSet.add( t );
             }
         }
-        return fn;
+        timePoints.addAll( timePointSet );
+        Collections.sort( timePoints );
+        return timePoints;
+    }
+
+
+    /**
+     * Stores the configuration of a single ViewSetup, instantiated via KlbPartitionResolver.addViewSetup(...)
+     */
+    public class KlbViewSetupConfig
+    {
+        private String filePathTemplate = "", indexTag = "";
+        private final List< KLB.Header > headers = new ArrayList< KLB.Header >();
+        private final double[] pixelSpacing = { 1, 1, 1 };
+
+        private int angleId = -1, channelId = -1, illuminationId = -1;
+        private String name = "";
+        private List< Integer > timePoints = null;
+
+        private String tagMatch = null;
+        private String tagFormat = null;
+
+        private KlbViewSetupConfig()
+        {
+        }
+
+        /**
+         * A multi file ViewSetup to the data set, each file is a time point
+         *
+         * @param filePath absolute file system path to representative file of this ViewSetup
+         * @param timeTag  tag in the file system path that denotes the time index of the file
+         *                 e.g. "t" for "t001"
+         * @return the newly added ViewSetup or null if its configuration failed for any reason,
+         * e.g. template file does not exist or does not contain the value of timeTag in its file system path
+         */
+        public boolean setTimeSeriesTemplateFile( final String filePath, final String timeTag )
+        {
+            final int t = getTagMatchFormatAndIndex( filePath, timeTag );
+            if ( tagMatch == null ) {
+                return false;
+            }
+
+            KLB.Header header = null;
+            try {
+                header = klb.readHeader( filePath );
+            } catch ( IOException ex ) {
+                return false;
+            }
+
+            headers.clear();
+            headers.add( header );
+
+            filePathTemplate = filePath;
+            this.indexTag = timeTag;
+            setPixelSpacing( header.pixelSpacing );
+
+            int level = 0;
+            while ( true ) {
+                try {
+                    headers.add( klb.readHeader( getFilePath( t, ++level ) ) );
+                } catch ( IOException ex ) {
+                    break;
+                }
+            }
+            return true;
+        }
+
+        /**
+         * A single file, single time point ViewSetup to the data set
+         *
+         * @param filePath absolute file system path to file of this ViewSetup
+         * @return the newly added ViewSetup or null if its configuration failed for any reason,
+         * e.g. file does not exist
+         */
+        public boolean setSingleFile( final String filePath )
+        {
+            KLB.Header header = null;
+            try {
+                header = klb.readHeader( filePath );
+            } catch ( IOException ex ) {
+                return false;
+            }
+
+            headers.clear();
+            headers.add( header );
+
+            filePathTemplate = filePath;
+            indexTag = tagMatch = tagFormat = null;
+            timePoints = null;
+            setPixelSpacing( header.pixelSpacing );
+
+            final int t = 0;
+            int level = 0;
+            while ( true ) {
+                try {
+                    headers.add( klb.readHeader( getFilePath( t, ++level ) ) );
+                } catch ( IOException ex ) {
+                    break;
+                }
+            }
+            return true;
+        }
+
+        private int getTagMatchFormatAndIndex( final String template, final String tag )
+        {
+            final String[] matchAndFormat = getTagMatchAndFormat( template, tag );
+            if ( matchAndFormat == null ) {
+                tagMatch = tagFormat = null;
+                return -1;
+            }
+            tagMatch = matchAndFormat[ 0 ];
+            tagFormat = matchAndFormat[ 1 ];
+            return Integer.parseInt( tagMatch.substring( tag.length() ) );
+        }
+
+        /**
+         * Set the time points for with this ViewSetup has data.
+         * This is only needed when creating a new data set definition to be serialized to XML.
+         *
+         * @param tps
+         */
+        public void setTimePoints( final List< Integer > tps )
+        {
+            if ( tps == null ) {
+                timePoints = null;
+            } else {
+                timePoints = new ArrayList< Integer >( tps );
+                Collections.sort( timePoints );
+            }
+            updateMetadata();
+        }
+
+        public List< Integer > getTimePoints()
+        {
+            return timePoints;
+        }
+
+        public void setPixelSpacing( final double[] pixelSpacing )
+        {
+            System.arraycopy( pixelSpacing, 0, this.pixelSpacing, 0, this.pixelSpacing.length );
+        }
+
+        /**
+         * Manually specify pixel spacing, if the true values are not stored in the KLB header
+         *
+         * @param pixelSpacing
+         */
+        public void setPixelSpacing( final float[] pixelSpacing )
+        {
+            for ( int i = 0; i < this.pixelSpacing.length; ++i ) {
+                this.pixelSpacing[ i ] = pixelSpacing[ i ];
+            }
+        }
+
+        public int getNumResolutionLevels()
+        {
+            return headers.size();
+        }
+
+        public String getFilePathTemplate()
+        {
+            return filePathTemplate;
+        }
+
+        public String getTimeTag()
+        {
+            return indexTag;
+        }
+
+        public String getFilePath( final int timePoint )
+        {
+            return getFilePath( filePathTemplate, timePoint, 0 );
+        }
+
+        public String getFilePath( final int timePoint, final int level )
+        {
+            return getFilePath( filePathTemplate, timePoint, level );
+        }
+
+        private String getFilePath( final String template, final int timePoint, final int level )
+        {
+            if ( tagMatch == null ) {
+                return template;
+            }
+            String fn = template.replaceAll( tagMatch, String.format( tagFormat, timePoint ) );
+            if ( level > 0 ) {
+                fn = fn.replace( ".klb", String.format( ".RESLVL%d.klb", level ) ); // ToDo: replace last only
+            }
+            return fn;
+        }
+
+        public int getId()
+        {
+            return viewSetupConfigs.indexOf( this );
+        }
+
+        public String getName()
+        {
+            if ( name.isEmpty() )
+                return String.valueOf( getId() );
+            return name;
+        }
+
+        public void setName( final String name )
+        {
+            this.name = name;
+        }
+
+        public int getAngleId()
+        {
+            return angleId;
+        }
+
+        public void setAngleId( final int id )
+        {
+            angleId = id;
+        }
+
+        public Angle getAngle()
+        {
+            return angles.get( getAngleId() );
+        }
+
+        public int getChannelId()
+        {
+            return channelId;
+        }
+
+        public void setChannelId( final int id )
+        {
+            channelId = id;
+        }
+
+        public Channel getChannel()
+        {
+            return channels.get( getChannelId() );
+        }
+
+        public int getIlluminationId()
+        {
+            return illuminationId;
+        }
+
+        public void setIlluminationId( final int id )
+        {
+            illuminationId = id;
+        }
+
+        public Illumination getIllumination()
+        {
+            return illuminations.get( getIlluminationId() );
+        }
+
+        public T getDataType()
+        {
+            return ( T ) headers.get( 0 ).dataType;
+        }
+
+        public void getImageSize( final int level, final long[] out )
+        {
+            System.arraycopy( headers.get( level ).imageSize, 0, out, 0, out.length );
+        }
+
+        public boolean getImageSize( final int timePoint, final int level, final long[] out )
+        {
+            try {
+                final KLB.Header header = klb.readHeader( getFilePath( timePoint, level ) );
+                System.arraycopy( header.imageSize, 0, out, 0, out.length );
+                return true;
+            } catch ( IOException ex ) {
+                return false;
+            }
+        }
+
+        public void getPixelSpacing( final int level, final double[] out )
+        {
+            if ( pixelSpacing != null && level == 0 ) {
+                System.arraycopy( pixelSpacing, 0, out, 0, out.length );
+            } else {
+                // ToDo: This assumes that the true values are stored in the KLB header of all resolution levels >0
+                final float[] pixelSpacing = headers.get( level ).pixelSpacing;
+                for ( int i = 0; i < out.length; ++i ) {
+                    out[ i ] = ( double ) pixelSpacing[ i ];
+                }
+            }
+        }
+
+        public boolean getPixelSpacing( final int timePoint, final int level, final double[] out )
+        {
+            try {
+                final KLB.Header header = klb.readHeader( getFilePath( timePoint, level ) );
+                final float[] pixelSpacing = header.pixelSpacing;
+                for ( int i = 0; i < out.length; ++i ) {
+                    out[ i ] = ( double ) pixelSpacing[ i ];
+                }
+                return true;
+            } catch ( IOException ex ) {
+                return false;
+            }
+        }
+
+        public void getBlockSize( final int level, final int[] out )
+        {
+            final long[] blockSize = headers.get( level ).blockSize;
+            for ( int i = 0; i < out.length; ++i ) {
+                out[ i ] = ( int ) blockSize[ i ]; // Math.toIntExact( blockSize[i] ); requires Java 1.7
+            }
+        }
+
+        public boolean getBlockSize( final int timePoint, final int level, final int[] out )
+        {
+            try {
+                final KLB.Header header = klb.readHeader( getFilePath( timePoint, level ) );
+                final long[] blockSize = header.blockSize;
+                for ( int i = 0; i < out.length; ++i ) {
+                    out[ i ] = ( int ) blockSize[ i ]; // Math.toIntExact( blockSize[i] ); requires Java 1.7
+                }
+                return true;
+            } catch ( IOException ex ) {
+                return false;
+            }
+        }
+
+        public ImgPlus< T > getImage( final int timePoint, final int level )
+                throws IOException
+        {
+            return klb.readFull( getFilePath( timePoint, level ) );
+        }
     }
 }

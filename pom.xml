@@ -4,9 +4,15 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+    <parent>
+        <artifactId>pom-bigdataviewer</artifactId>
+        <groupId>sc.fiji</groupId>
+        <version>3.2.0</version>
+    </parent>
+
     <groupId>org.janelia.simview</groupId>
     <artifactId>klb-bdv</artifactId>
-    <version>0.1.1</version>
+    <version>0.2.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>Keller Lab Block file type (.klb) - BigDataViewer backend</name>
@@ -18,12 +24,6 @@
         cores making it much faster than JPEG2000 and HDF5 in common multi-core machines.
     </description>
     <url>https://github.com/bhoeckendorf/klb-bdv</url>
-
-    <parent>
-        <artifactId>pom-bigdataviewer</artifactId>
-        <groupId>sc.fiji</groupId>
-        <version>3.0.0</version>
-    </parent>
 
     <dependencies>
         <dependency>
@@ -45,8 +45,8 @@
         </dependency>
         <dependency>
             <groupId>com.miglayout</groupId>
-            <artifactId>miglayout-swing</artifactId>
-            <version>[LATEST,)</version>
+            <artifactId>miglayout</artifactId>
+            <classifier>swing</classifier>
         </dependency>
     </dependencies>
 

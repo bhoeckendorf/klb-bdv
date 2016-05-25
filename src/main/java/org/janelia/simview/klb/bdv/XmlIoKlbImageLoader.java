@@ -7,9 +7,7 @@ import mpicbg.spim.data.generic.sequence.XmlIoBasicImgLoader;
 import org.jdom2.Element;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Collections;
 
 import static mpicbg.spim.data.XmlKeys.IMGLOADER_FORMAT_ATTRIBUTE_NAME;
 
@@ -36,34 +34,17 @@ public class XmlIoKlbImageLoader implements XmlIoBasicImgLoader< KlbImgLoader >
     private Element resolverToXml( final KlbPartitionResolver resolver )
     {
         final Element resolverElem = new Element( "Resolver" );
-
         final String type = resolver.getClass().getName();
         resolverElem.setAttribute( "type", type );
-
-        for ( final String template : resolver.viewSetupTemplates ) {
+        final List< KlbPartitionResolver.KlbViewSetupConfig > setups = resolver.getViewSetupConfigs();
+        for ( final KlbPartitionResolver.KlbViewSetupConfig setup : setups ) {
             final Element templateElem = new Element( "ViewSetupTemplate" );
-            templateElem.addContent( XmlHelpers.textElement( "template", template ) );
+            templateElem.addContent( XmlHelpers.textElement( "template", setup.getFilePathTemplate() ) );
+            if ( setup.getTimePoints() != null && !setup.getTimePoints().isEmpty() ) {
+                templateElem.addContent( XmlHelpers.textElement( "timeTag", setup.getTimeTag() ) );
+            }
             resolverElem.addContent( templateElem );
         }
-        if ( resolver.getLastTimePoint() - resolver.getFirstTimePoint() > 0 ) {
-            KlbMultiFileNameTag tag = new KlbMultiFileNameTag();
-            tag.dimension = KlbMultiFileNameTag.Dimension.TIME;
-            tag.tag = resolver.timeTag;
-            tag.first = resolver.getFirstTimePoint();
-            tag.last = resolver.getLastTimePoint();
-            tag.stride = 1;
-            resolverElem.addContent( nameTagToXml( tag ) );
-        }
-        if ( resolver.getMaxNumResolutionLevels() > 1 ) {
-        	KlbMultiFileNameTag tag = new KlbMultiFileNameTag();
-            tag.dimension = KlbMultiFileNameTag.Dimension.RESOLUTION_LEVEL;
-            tag.tag = resolver.resLvlTag;
-            tag.first = 0;
-            tag.last = resolver.getMaxNumResolutionLevels() - 1;
-            tag.stride = 1;
-            resolverElem.addContent( nameTagToXml( tag ) );
-        }
-
         return resolverElem;
     }
 
@@ -71,95 +52,36 @@ public class XmlIoKlbImageLoader implements XmlIoBasicImgLoader< KlbImgLoader >
     {
         final String type = elem.getAttributeValue( "type" );
         if ( type.equals( KlbPartitionResolver.class.getName() ) || type.equals( KlbPartitionResolver.class.getName() + "Default" ) ) {
-            final List< String > templates = new ArrayList< String >();
-
-            for ( final Element e : elem.getChildren( "ViewSetupTemplate" ) ) {
-                templates.add( XmlHelpers.getText( e, "template" ) );
-            }
-
-            final List< KlbMultiFileNameTag > tags = new ArrayList< KlbMultiFileNameTag >();
+            // For legacy support:
+            // Handle resolver type "KlbPartitionResolverDefault" (code line above),
+            // look for a "MultiFileNameTag" element with dimension "TIME" (for loop below),
+            // to override implicit default values (variables below).
+            String timeTag = "TM";
             for ( final Element e : elem.getChildren( "MultiFileNameTag" ) ) {
-                tags.add( nameTagFromXml( e ) );
+                final String dimension = XmlHelpers.getText( e, "dimension" );
+                if ( !dimension.equals( "TIME" ) ) {
+                    continue;
+                }
+                timeTag = XmlHelpers.getText( e, "tag" );
             }
-            
-            boolean hasTime = false, hasResolution = false;
-            for (int i=0; i < tags.size(); ++i) {
-            	if (tags.get(i).dimension.equals(KlbMultiFileNameTag.Dimension.TIME))
-            		hasTime = true;
-            	if (tags.get(i).dimension.equals(KlbMultiFileNameTag.Dimension.RESOLUTION_LEVEL))
-            		hasResolution = true;
+
+            final KlbPartitionResolver resolver = new KlbPartitionResolver();
+            for ( final Element e : elem.getChildren( "ViewSetupTemplate" ) ) {
+                final String template = XmlHelpers.getText( e, "template" );
+                final String tag = XmlHelpers.getText( e, "timeTag" );
+                if ( tag == null ) {
+                    if ( timeTag != null ) {
+                        resolver.addViewSetup( template, timeTag );
+                    } else {
+                        resolver.addViewSetup( template );
+                    }
+                } else {
+                    resolver.addViewSetup( template, tag );
+                }
             }
-            if ( ! hasTime ) {
-                final KlbMultiFileNameTag tag = new KlbMultiFileNameTag();
-                tag.tag = "";
-                tag.dimension = KlbMultiFileNameTag.Dimension.TIME;
-                tag.first = 0;
-                tag.last = 0;
-                tag.stride = 1;
-                tags.add( tag );
-            }
-            if ( ! hasResolution ) {
-                final KlbMultiFileNameTag tag = new KlbMultiFileNameTag();
-                tag.tag = "";
-                tag.dimension = KlbMultiFileNameTag.Dimension.RESOLUTION_LEVEL;
-                tag.first = 0;
-                tag.last = 0;
-                tag.stride = 1;
-                tags.add( tag );
-            }
-            Collections.sort(tags);
-            
-            String[] arr = new String[ templates.size() ];
-            templates.toArray( arr );
-            return new KlbPartitionResolver( arr, tags.get(0).tag, tags.get(0).first, tags.get(0).last, "RESLVL", tags.get(1).last+1 );
+            return resolver;
         }
 
         throw new RuntimeException( "Could not instantiate KlbPartitionResolver" );
-    }
-
-    private Element nameTagToXml( final KlbMultiFileNameTag tag )
-    {
-        final Element elem = new Element( "MultiFileNameTag" );
-        elem.addContent( XmlHelpers.textElement( "dimension", tag.dimension.toString() ) );
-        elem.addContent( XmlHelpers.textElement( "tag", tag.tag ) );
-        elem.addContent( XmlHelpers.intElement( "lastIndex", tag.last ) );
-
-        if ( tag.first != 0 ) {
-            elem.addContent( XmlHelpers.intElement( "firstIndex", tag.first ) );
-        }
-
-        if ( tag.stride != 1 ) {
-            elem.addContent( XmlHelpers.intElement( "indexStride", tag.stride ) );
-        }
-
-        return elem;
-    }
-
-    private KlbMultiFileNameTag nameTagFromXml( final Element elem )
-    {
-        final KlbMultiFileNameTag tag = new KlbMultiFileNameTag();
-        final String dim = XmlHelpers.getText( elem, "dimension" );
-        if ( dim.equals( KlbMultiFileNameTag.Dimension.TIME.toString() ) ) {
-            tag.dimension = KlbMultiFileNameTag.Dimension.TIME;
-        }
-        else if ( dim.equals( KlbMultiFileNameTag.Dimension.RESOLUTION_LEVEL.toString() ) ) {
-            tag.dimension = KlbMultiFileNameTag.Dimension.RESOLUTION_LEVEL;
-        }
-        tag.tag = XmlHelpers.getText( elem, "tag" );
-        tag.last = XmlHelpers.getInt( elem, "lastIndex" );
-
-        tag.first = 0;
-        try {
-            tag.first = XmlHelpers.getInt( elem, "firstIndex" );
-        } catch ( Exception ex ) {
-        }
-
-        tag.stride = 1;
-        try {
-            tag.stride = XmlHelpers.getInt( elem, "indexStride" );
-        } catch ( Exception ex ) {
-        }
-
-        return tag;
     }
 }

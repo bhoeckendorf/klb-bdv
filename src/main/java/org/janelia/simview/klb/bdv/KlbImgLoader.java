@@ -3,10 +3,13 @@ package org.janelia.simview.klb.bdv;
 import bdv.ViewerImgLoader;
 import bdv.ViewerSetupImgLoader;
 import bdv.img.cache.*;
-import mpicbg.spim.data.generic.sequence.*;
+import mpicbg.spim.data.generic.sequence.AbstractSequenceDescription;
+import mpicbg.spim.data.generic.sequence.BasicViewSetup;
+import mpicbg.spim.data.generic.sequence.ImgLoaderHint;
+import mpicbg.spim.data.generic.sequence.ImgLoaderHints;
+import mpicbg.spim.data.sequence.FinalVoxelDimensions;
 import mpicbg.spim.data.sequence.MultiResolutionImgLoader;
 import mpicbg.spim.data.sequence.MultiResolutionSetupImgLoader;
-import mpicbg.spim.data.sequence.TimePoint;
 import mpicbg.spim.data.sequence.VoxelDimensions;
 import net.imglib2.*;
 import net.imglib2.img.Img;
@@ -24,7 +27,6 @@ import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Fraction;
 import net.imglib2.util.Intervals;
 import net.imglib2.view.Views;
-import org.janelia.simview.klb.KLB;
 import spim.Threads;
 
 import java.io.IOException;
@@ -32,7 +34,6 @@ import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -40,14 +41,12 @@ import java.util.concurrent.Executors;
 public class KlbImgLoader implements ViewerImgLoader, MultiResolutionImgLoader
 {
     private final KlbPartitionResolver resolver;
-    private final AbstractSequenceDescription< BasicViewSetup, BasicViewDescription< BasicViewSetup >, KlbImgLoader > seq;
     private final VolatileGlobalCellCache cache;
     private final HashMap< Integer, KlbSetupImgLoader > setupImgLoaders = new HashMap< Integer, KlbSetupImgLoader >();
 
     public KlbImgLoader( final KlbPartitionResolver resolver, final AbstractSequenceDescription< ?, ?, ? > seq )
     {
         this.resolver = resolver;
-        this.seq = ( AbstractSequenceDescription< BasicViewSetup, BasicViewDescription< BasicViewSetup >, KlbImgLoader > ) seq;
         cache = new VolatileGlobalCellCache(
                 seq.getTimePoints().size(),
                 resolver.getNumViewSetups(),
@@ -56,7 +55,7 @@ public class KlbImgLoader implements ViewerImgLoader, MultiResolutionImgLoader
         );
         for ( final BasicViewSetup viewSetup : seq.getViewSetupsOrdered() ) {
             final int id = viewSetup.getId();
-            final Type type = this.resolver.getViewSetupImageType( id );
+            final Type type = this.resolver.getViewSetupConfig( id ).getDataType();
             if ( type instanceof UnsignedByteType )
                 setupImgLoaders.put( id, new KlbSetupImgLoader( id, new KlbVolatileArrayLoaderUInt8( this.resolver ) ) );
             else if ( type instanceof UnsignedShortType )
@@ -91,6 +90,7 @@ public class KlbImgLoader implements ViewerImgLoader, MultiResolutionImgLoader
         private final int viewSetupId;
         private final long[] imageSize = new long[ 3 ];
         private final int[] blockSize = new int[ 3 ];
+        private final double[] pixelSpacing = new double[ 3 ];
         private final KlbVolatileArrayLoader< T, V, A > arrayLoader;
         private double[][] mipMapResolutions;
         private AffineTransform3D[] mipMapTransforms;
@@ -98,12 +98,6 @@ public class KlbImgLoader implements ViewerImgLoader, MultiResolutionImgLoader
         // cached constructors to create linked types
         private Constructor< T > typeConstructor;
         private Constructor< V > volatileTypeConstructor;
-
-        /**
-         * This instance of KLB is used to load images completely and directly. It will use all available threads to
-         * read the image, whereas the KLB instances in the BigDataViewer use 1 thread each.
-         */
-        private KLB klb;
 
         public KlbSetupImgLoader( final int viewSetupId, final KlbVolatileArrayLoader< T, V, A > arrayLoader )
         {
@@ -114,7 +108,8 @@ public class KlbImgLoader implements ViewerImgLoader, MultiResolutionImgLoader
         @Override
         public Dimensions getImageSize( final int timePointId, final int level )
         {
-            return seq.getViewSetups().get( viewSetupId ).getSize();
+            resolver.getImageSize( viewSetupId, level, imageSize );
+            return new FinalDimensions( imageSize );
         }
 
         @Override
@@ -126,19 +121,16 @@ public class KlbImgLoader implements ViewerImgLoader, MultiResolutionImgLoader
         @Override
         public VoxelDimensions getVoxelSize( final int timePointId )
         {
-            return seq.getViewSetups().get( viewSetupId ).getVoxelSize();
+            resolver.getPixelSpacing( viewSetupId, 0, pixelSpacing );
+            return new FinalVoxelDimensions( "um", pixelSpacing );
         }
 
         @Override
         public RandomAccessibleInterval< T > getImage( final int timePointId, final int level, final ImgLoaderHint... hints )
         {
             if ( Arrays.asList( hints ).contains( ImgLoaderHints.LOAD_COMPLETELY ) ) {
-                if ( klb == null ) {
-                    klb = KLB.newInstance();
-                    klb.setNumThreads( Threads.numThreads() );
-                }
                 try {
-                    return klb.readFull( resolver.getFilePath( timePointId, viewSetupId, level ) );
+                    return resolver.getImage( timePointId, viewSetupId, level );
                 } catch ( IOException e ) {
                     e.printStackTrace();
                 }
@@ -185,8 +177,8 @@ public class KlbImgLoader implements ViewerImgLoader, MultiResolutionImgLoader
             if ( Intervals.numElements( inImg ) <= Integer.MAX_VALUE ) {
                 imgFactory = new ArrayImgFactory< FloatType >();
             } else {
-                getImageSize( timePointId, level ).dimensions( imageSize );
-                getBlockSize( timePointId, level );
+                resolver.getImageSize( viewSetupId, level, imageSize );
+                resolver.getBlockSize( viewSetupId, level, blockSize );
                 imgFactory = new CellImgFactory< FloatType >( blockSize );
             }
             final Img< FloatType > floatImg = imgFactory.create( inImg, f );
@@ -297,8 +289,8 @@ public class KlbImgLoader implements ViewerImgLoader, MultiResolutionImgLoader
 
         private < T extends NativeType< T > > CachedCellImg< T, A > prepareCachedImage( final int timePointId, final int level, final LoadingStrategy loadingStrategy )
         {
-            getImageSize( timePointId, level ).dimensions( imageSize );
-            getBlockSize( timePointId, level );
+            resolver.getImageSize( viewSetupId, level, imageSize );
+            resolver.getBlockSize( viewSetupId, level, blockSize );
             final int priority = resolver.getNumResolutionLevels( viewSetupId ) - 1 - level;
             final CacheHints cacheHints = new CacheHints( loadingStrategy, priority, false );
             final VolatileImgCells.CellCache< A > c = cache.new VolatileCellCache( timePointId, viewSetupId, level, cacheHints, arrayLoader );
@@ -336,7 +328,7 @@ public class KlbImgLoader implements ViewerImgLoader, MultiResolutionImgLoader
             if ( mipMapResolutions == null ) {
                 mipMapResolutions = new double[ resolver.getNumResolutionLevels( viewSetupId ) ][ 3 ];
                 for ( int level = 0; level < mipMapResolutions.length; ++level ) {
-                    resolver.getSampling( resolver.getFirstTimePoint(), viewSetupId, level, mipMapResolutions[ level ] );
+                    resolver.getPixelSpacing( resolver.getFirstTimePoint(), viewSetupId, level, mipMapResolutions[ level ] );
                 }
             }
             return mipMapResolutions;
@@ -347,23 +339,22 @@ public class KlbImgLoader implements ViewerImgLoader, MultiResolutionImgLoader
         {
             if ( mipMapTransforms == null ) {
                 mipMapTransforms = new AffineTransform3D[ resolver.getNumResolutionLevels( viewSetupId ) ];
-                long[] fullresDimension = new long[3];
-                resolver.getImageDimensions(resolver.getFirstTimePoint(), viewSetupId, 0, fullresDimension);
+                long[] fullresDimension = new long[ 3 ];
+                resolver.getImageSize( resolver.getFirstTimePoint(), viewSetupId, 0, fullresDimension );
                 for ( int level = 0; level < mipMapTransforms.length; ++level ) {
-                    mipMapTransforms[ level ] = new AffineTransform3D(); 
-                	long[] currentDimension = new long[3];
-                	resolver.getImageDimensions(resolver.getFirstTimePoint(), viewSetupId, level, currentDimension);
-                	double[] scale = new double[3];
-                	double[] offset = new double[3];
-                	for ( int dim = 0; dim < 3; ++dim)
-                	{
-                		scale[dim] = (double)fullresDimension[dim]/currentDimension[dim];
-                		offset[dim] = (scale[dim]-1.0)/2.0;
-                	}
-                	mipMapTransforms[level].set(
-                            scale[ 0 ], 0, 0, offset[0],
-                            0, scale[ 1 ], 0, offset[1],
-                            0, 0, scale[ 2 ], offset[2]
+                    mipMapTransforms[ level ] = new AffineTransform3D();
+                    long[] currentDimension = new long[ 3 ];
+                    resolver.getImageSize( resolver.getFirstTimePoint(), viewSetupId, level, currentDimension );
+                    double[] scale = new double[ 3 ];
+                    double[] offset = new double[ 3 ];
+                    for ( int dim = 0; dim < 3; ++dim ) {
+                        scale[ dim ] = ( double ) fullresDimension[ dim ] / currentDimension[ dim ];
+                        offset[ dim ] = (scale[ dim ] - 1.0) / 2.0;
+                    }
+                    mipMapTransforms[ level ].set(
+                            scale[ 0 ], 0, 0, offset[ 0 ],
+                            0, scale[ 1 ], 0, offset[ 1 ],
+                            0, 0, scale[ 2 ], offset[ 2 ]
                     );
                 }
             }
@@ -380,20 +371,6 @@ public class KlbImgLoader implements ViewerImgLoader, MultiResolutionImgLoader
         public V getVolatileImageType()
         {
             return arrayLoader.getVolatileType();
-        }
-
-        private void getBlockSize( final int timePointId, final int level )
-        {
-            if ( blockSize[ 0 ] == 0 ) {
-                if ( !resolver.getBlockDimensions( timePointId, viewSetupId, level, blockSize ) ) {
-                    final Map< Integer, TimePoint > timePoints = seq.getTimePoints().getTimePoints();
-                    for ( final Integer t : timePoints.keySet() ) {
-                        if ( resolver.getBlockDimensions( timePoints.get( t ).getId(), viewSetupId, level, blockSize ) ) {
-                            break;
-                        }
-                    }
-                }
-            }
         }
     }
 }
