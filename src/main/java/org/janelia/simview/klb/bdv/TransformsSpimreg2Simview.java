@@ -4,6 +4,7 @@ import bdv.spimdata.XmlIoSpimDataMinimal;
 import mpicbg.spim.data.registration.ViewRegistration;
 import mpicbg.spim.data.registration.ViewRegistrations;
 import mpicbg.spim.data.sequence.TimePoint;
+import mpicbg.spim.data.sequence.ViewId;
 import mpicbg.spim.data.sequence.ViewSetup;
 import net.imglib2.realtransform.AffineTransform3D;
 import org.scijava.command.Command;
@@ -104,6 +105,10 @@ public class TransformsSpimreg2Simview implements Command
                 final int timePointId = timePoint.getId();
                 final DocumentBuilder docBuilder = docBuilderFactory.newDocumentBuilder();
                 for ( final ViewSetup viewSetup : viewSetups ) {
+                    if ( spimData.getSequenceDescription().getMissingViews().getMissingViews().contains( new ViewId( timePointId, viewSetup.getId() ) ) ) {
+                        continue;
+                    }
+
                     final int channelId = viewSetup.getChannel().getId();
                     Document doc = channelDocs.get( channelId );
                     if ( doc == null ) {
