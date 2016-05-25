@@ -38,7 +38,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@Plugin( type = Command.class, menuPath = "Plugins>BigDataViewer>Generate KLB Dataset resolution levels" )
+@Plugin( type = Command.class, menuPath = "Plugins>BigDataViewer>Generate KLB resolution levels" )
 public class KlbDownsampler< T extends RealType< T > & NativeType< T > > implements Command
 {
     private final KLB klb = KLB.newInstance();
