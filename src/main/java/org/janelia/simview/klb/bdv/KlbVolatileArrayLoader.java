@@ -41,6 +41,7 @@ public abstract class KlbVolatileArrayLoader< T extends RealType< T > & NativeTy
         // so we only need to worry about time and level
         if ( level != currentLevel || timePoint != currentTimePoint ) {
             currentFilePath = resolver.getFilePath( timePoint, viewSetup, level );
+            currentLevel = level;
             currentTimePoint = timePoint;
         }
         return loadArray( currentFilePath,
