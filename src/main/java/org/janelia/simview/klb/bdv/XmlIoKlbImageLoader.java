@@ -59,24 +59,28 @@ public class XmlIoKlbImageLoader implements XmlIoBasicImgLoader< KlbImgLoader >
             String timeTag = "TM";
             for ( final Element e : elem.getChildren( "MultiFileNameTag" ) ) {
                 final String dimension = XmlHelpers.getText( e, "dimension" );
-                if ( !dimension.equals( "TIME" ) ) {
-                    continue;
+                if ( dimension.equals( "TIME" ) ) {
+                    timeTag = XmlHelpers.getText( e, "tag" );
+                    break;
                 }
-                timeTag = XmlHelpers.getText( e, "tag" );
             }
 
             final KlbPartitionResolver resolver = new KlbPartitionResolver();
             for ( final Element e : elem.getChildren( "ViewSetupTemplate" ) ) {
                 final String template = XmlHelpers.getText( e, "template" );
                 final String tag = XmlHelpers.getText( e, "timeTag" );
+                KlbPartitionResolver.KlbViewSetupConfig config = null;
                 if ( tag == null ) {
                     if ( timeTag != null ) {
-                        resolver.addViewSetup( template, timeTag );
+                        config = resolver.addViewSetup( template, timeTag );
                     } else {
-                        resolver.addViewSetup( template );
+                        config = resolver.addViewSetup( template );
                     }
                 } else {
-                    resolver.addViewSetup( template, tag );
+                    config = resolver.addViewSetup( template, tag );
+                }
+                if ( config == null ) {
+                    throw new RuntimeException( String.format( "Could not initialize ViewSetup %d because template file is missing: %s", resolver.getNumViewSetups(), template ) );
                 }
             }
             return resolver;
