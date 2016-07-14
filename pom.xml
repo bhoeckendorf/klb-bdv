@@ -40,10 +40,6 @@
             <artifactId>SPIM_Registration</artifactId>
         </dependency>
         <dependency>
-            <groupId>sc.fiji</groupId>
-            <artifactId>spim_data</artifactId>
-        </dependency>
-        <dependency>
             <groupId>com.miglayout</groupId>
             <artifactId>miglayout</artifactId>
             <classifier>swing</classifier>
