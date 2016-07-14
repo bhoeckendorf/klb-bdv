@@ -1,11 +1,8 @@
 package org.janelia.simview.klb.bdv;
 
-import bdv.spimdata.XmlIoSpimDataMinimal;
 import mpicbg.spim.data.registration.ViewRegistration;
 import mpicbg.spim.data.registration.ViewRegistrations;
-import mpicbg.spim.data.sequence.TimePoint;
-import mpicbg.spim.data.sequence.ViewId;
-import mpicbg.spim.data.sequence.ViewSetup;
+import mpicbg.spim.data.sequence.*;
 import net.imglib2.realtransform.AffineTransform3D;
 import org.scijava.command.Command;
 import org.scijava.log.LogService;
@@ -61,10 +58,14 @@ public class TransformsSpimreg2Simview implements Command
         log.info( "Converting SPIM Registration transforms to SiMView standard" );
 
         SpimData2 spimData = null;
+        SequenceDescription seq = null;
         KlbImgLoader imageLoader = null;
+        MissingViews missingViews = null;
         try {
             spimData = new XmlIoSpimData2( null ).load( xmlFile.getAbsolutePath() );
-            imageLoader = ( KlbImgLoader ) new XmlIoSpimDataMinimal().load( xmlFile.getAbsolutePath() ).getSequenceDescription().getImgLoader();
+            seq = spimData.getSequenceDescription();
+            imageLoader = ( KlbImgLoader ) seq.getImgLoader();
+            missingViews = seq.getMissingViews();
         } catch ( Exception e ) {
             log.error( e );
         }
@@ -90,7 +91,7 @@ public class TransformsSpimreg2Simview implements Command
         new File( outputDir ).mkdir();
 
         final KlbPartitionResolver resolver = imageLoader.getResolver();
-        final List< ViewSetup > viewSetups = spimData.getSequenceDescription().getViewSetupsOrdered();
+        final List< ViewSetup > viewSetups = seq.getViewSetupsOrdered();
         final ViewRegistrations viewRegistrations = spimData.getViewRegistrations();
         final DocumentBuilderFactory docBuilderFactory = DocumentBuilderFactory.newInstance();
         final AffineTransform3D xyflip = new AffineTransform3D();
@@ -100,12 +101,12 @@ public class TransformsSpimreg2Simview implements Command
         final double[] transformArray = new double[ 16 ];
         transformArray[ 15 ] = 1d;
         try {
-            for ( final TimePoint timePoint : spimData.getSequenceDescription().getTimePoints().getTimePointsOrdered() ) {
+            for ( final TimePoint timePoint : seq.getTimePoints().getTimePointsOrdered() ) {
                 final Map< Integer, Document > channelDocs = new HashMap< Integer, Document >();
                 final int timePointId = timePoint.getId();
                 final DocumentBuilder docBuilder = docBuilderFactory.newDocumentBuilder();
                 for ( final ViewSetup viewSetup : viewSetups ) {
-                    if ( spimData.getSequenceDescription().getMissingViews().getMissingViews().contains( new ViewId( timePointId, viewSetup.getId() ) ) ) {
+                    if ( seq.getMissingViews() != null && seq.getMissingViews().getMissingViews().contains( new ViewId( timePointId, viewSetup.getId() ) ) ) {
                         continue;
                     }
 

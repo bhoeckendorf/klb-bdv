@@ -19,11 +19,6 @@ import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
 import org.janelia.simview.klb.KLB;
-import org.jdom2.Document;
-import org.jdom2.Element;
-import org.jdom2.input.SAXBuilder;
-import org.jdom2.output.Format;
-import org.jdom2.output.XMLOutputter;
 import org.scijava.command.Command;
 import org.scijava.log.LogService;
 import org.scijava.log.StderrLogService;
@@ -31,7 +26,6 @@ import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -188,7 +182,7 @@ public class KlbDownsampler< T extends RealType< T > & NativeType< T > > impleme
             log.info( String.format( "Time point %d", t ) );
             for ( final BasicViewSetup viewSetup : viewSetups ) {
                 final int viewSetupId = viewSetup.getId();
-                if ( seq.getMissingViews().getMissingViews().contains( new ViewId( t, viewSetupId ) ) ) {
+                if ( seq.getMissingViews() != null && seq.getMissingViews().getMissingViews().contains( new ViewId( t, viewSetupId ) ) ) {
                     continue;
                 }
                 final int[][] scales = relativeScaling.get( viewSetupId );
