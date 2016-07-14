@@ -35,7 +35,6 @@ public class KlbPartitionResolver< T extends RealType< T > & NativeType< T > >
     private final Map< Integer, Angle > angles = new HashMap< Integer, Angle >();
     private final Map< Integer, Channel > channels = new HashMap< Integer, Channel >();
     private final Map< Integer, Illumination > illuminations = new HashMap< Integer, Illumination >();
-    private int firstTimePoint = 0, lastTimePoint = 0, maxNumResolutionLevels = 0;
 
     /**
      * Add a multi file ViewSetup to the data set, each file is a time point
@@ -51,7 +50,6 @@ public class KlbPartitionResolver< T extends RealType< T > & NativeType< T > >
         final KlbViewSetupConfig setup = new KlbViewSetupConfig();
         if ( setup.setTimeSeriesTemplateFile( timeSeriesTemplateFile, timeTag ) ) {
             viewSetupConfigs.add( setup );
-            updateMetadata();
             return setup;
         }
         return null;
@@ -69,7 +67,6 @@ public class KlbPartitionResolver< T extends RealType< T > & NativeType< T > >
         final KlbViewSetupConfig setup = new KlbViewSetupConfig();
         if ( setup.setSingleFile( singleFile ) ) {
             viewSetupConfigs.add( setup );
-            updateMetadata();
             return setup;
         }
         return null;
@@ -78,35 +75,11 @@ public class KlbPartitionResolver< T extends RealType< T > & NativeType< T > >
     public void removeViewSetup( final KlbViewSetupConfig config )
     {
         viewSetupConfigs.remove( config );
-        updateMetadata();
     }
 
     public void removeViewSetup( final int viewSetupId )
     {
         viewSetupConfigs.remove( viewSetupId );
-        updateMetadata();
-    }
-
-    /**
-     * Update file system level metadata, specifically nr of time points and resolution levels.
-     * Is called each time a ViewSetupConfig is added, removed, or has its timePoint member field modified
-     */
-    private void updateMetadata()
-    {
-        maxNumResolutionLevels = 0;
-        for ( final KlbViewSetupConfig config : viewSetupConfigs ) {
-            final List< Integer > timePoints = config.getTimePoints();
-            if ( timePoints == null ) {
-                firstTimePoint = lastTimePoint = 0;
-            } else {
-                if ( timePoints.get( 0 ) < firstTimePoint )
-                    firstTimePoint = timePoints.get( 0 );
-                if ( timePoints.get( timePoints.size() - 1 ) > lastTimePoint )
-                    lastTimePoint = timePoints.get( timePoints.size() - 1 );
-            }
-            if ( config.getNumResolutionLevels() > maxNumResolutionLevels )
-                maxNumResolutionLevels = config.getNumResolutionLevels();
-        }
     }
 
     public List< KlbViewSetupConfig > getViewSetupConfigs()
@@ -196,26 +169,6 @@ public class KlbPartitionResolver< T extends RealType< T > & NativeType< T > >
     }
 
     /**
-     * Returns the global first time point index of all configures ViewSetups
-     *
-     * @return the global first time point index of all configures ViewSetups
-     */
-    public int getFirstTimePoint()
-    {
-        return firstTimePoint;
-    }
-
-    /**
-     * Returns the global last time point index of all configures ViewSetups
-     *
-     * @return the global last time point index of all configures ViewSetups
-     */
-    public int getLastTimePoint()
-    {
-        return lastTimePoint;
-    }
-
-    /**
      * Returns the number of available resolution levels for the
      * given ViewSetup.
      * Should be 1 (not 0) if only full resolution, original images
@@ -227,17 +180,6 @@ public class KlbPartitionResolver< T extends RealType< T > & NativeType< T > >
     public int getNumResolutionLevels( final int viewSetup )
     {
         return viewSetupConfigs.get( viewSetup ).getNumResolutionLevels();
-    }
-
-    /**
-     * Returns the highest number of available resolution levels
-     * across all ViewSetups.
-     *
-     * @return highest number of resolution levels across all channelIds
-     */
-    public int getMaxNumResolutionLevels()
-    {
-        return maxNumResolutionLevels;
     }
 
     /**
@@ -525,13 +467,7 @@ public class KlbPartitionResolver< T extends RealType< T > & NativeType< T > >
          */
         public void setTimePoints( final List< Integer > tps )
         {
-            if ( tps == null ) {
-                timePoints = null;
-            } else {
-                timePoints = new ArrayList< Integer >( tps );
-                Collections.sort( timePoints );
-            }
-            updateMetadata();
+            timePoints = tps;
         }
 
         public List< Integer > getTimePoints()

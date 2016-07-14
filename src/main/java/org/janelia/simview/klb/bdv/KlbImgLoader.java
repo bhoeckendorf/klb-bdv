@@ -47,10 +47,14 @@ public class KlbImgLoader implements ViewerImgLoader, MultiResolutionImgLoader
     public KlbImgLoader( final KlbPartitionResolver resolver, final AbstractSequenceDescription< ?, ?, ? > seq )
     {
         this.resolver = resolver;
+        int maxNumResolutionLevels = 1;
+        for ( int i = 0; i < resolver.getNumViewSetups(); ++i ) {
+            maxNumResolutionLevels = Math.max( resolver.getViewSetupConfig( i ).getNumResolutionLevels(), maxNumResolutionLevels );
+        }
         cache = new VolatileGlobalCellCache(
                 seq.getTimePoints().size(),
                 resolver.getNumViewSetups(),
-                resolver.getMaxNumResolutionLevels(),
+                maxNumResolutionLevels,
                 Threads.numThreads()
         );
         for ( final BasicViewSetup viewSetup : seq.getViewSetupsOrdered() ) {
@@ -328,7 +332,7 @@ public class KlbImgLoader implements ViewerImgLoader, MultiResolutionImgLoader
             if ( mipMapResolutions == null ) {
                 mipMapResolutions = new double[ resolver.getNumResolutionLevels( viewSetupId ) ][ 3 ];
                 for ( int level = 0; level < mipMapResolutions.length; ++level ) {
-                    resolver.getPixelSpacing( resolver.getFirstTimePoint(), viewSetupId, level, mipMapResolutions[ level ] );
+                    resolver.getPixelSpacing( viewSetupId, level, mipMapResolutions[ level ] );
                 }
             }
             return mipMapResolutions;
@@ -340,11 +344,11 @@ public class KlbImgLoader implements ViewerImgLoader, MultiResolutionImgLoader
             if ( mipMapTransforms == null ) {
                 mipMapTransforms = new AffineTransform3D[ resolver.getNumResolutionLevels( viewSetupId ) ];
                 long[] fullresDimension = new long[ 3 ];
-                resolver.getImageSize( resolver.getFirstTimePoint(), viewSetupId, 0, fullresDimension );
+                resolver.getImageSize( viewSetupId, 0, fullresDimension );
                 for ( int level = 0; level < mipMapTransforms.length; ++level ) {
                     mipMapTransforms[ level ] = new AffineTransform3D();
                     long[] currentDimension = new long[ 3 ];
-                    resolver.getImageSize( resolver.getFirstTimePoint(), viewSetupId, level, currentDimension );
+                    resolver.getImageSize( viewSetupId, level, currentDimension );
                     double[] scale = new double[ 3 ];
                     double[] offset = new double[ 3 ];
                     for ( int dim = 0; dim < 3; ++dim ) {

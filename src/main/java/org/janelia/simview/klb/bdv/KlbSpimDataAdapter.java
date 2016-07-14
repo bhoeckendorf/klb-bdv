@@ -12,6 +12,7 @@ import spim.fiji.spimdata.SpimData2;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
@@ -48,23 +49,35 @@ public class KlbSpimDataAdapter implements MultiViewDatasetDefinition
         // ViewSetups
         final long[] imageSize = new long[ 3 ];
         final double[] pixelSpacing = new double[ 3 ];
+        int firstTimePoint = Integer.MAX_VALUE, lastTimePoint = Integer.MIN_VALUE;
         final HashMap< Integer, ViewSetup > viewSetups = new HashMap< Integer, ViewSetup >();
         for ( int viewSetupId = 0; viewSetupId < resolver.getNumViewSetups(); ++viewSetupId ) {
             resolver.getImageSize( viewSetupId, 0, imageSize );
             resolver.getPixelSpacing( viewSetupId, 0, pixelSpacing );
+            final KlbPartitionResolver.KlbViewSetupConfig setupConfig = resolver.getViewSetupConfig( viewSetupId );
+            final List< Integer > timePoints = setupConfig.getTimePoints();
+            if ( timePoints != null && !timePoints.isEmpty() ) {
+                Collections.sort( timePoints );
+                firstTimePoint = Math.min( timePoints.get( 0 ), firstTimePoint );
+                lastTimePoint = Math.max( timePoints.get( timePoints.size() - 1 ), lastTimePoint );
+            }
             viewSetups.put( viewSetupId, new ViewSetup(
-                    viewSetupId, resolver.getViewSetupConfig( viewSetupId ).getName(),
+                    viewSetupId, setupConfig.getName(),
                     new FinalDimensions( imageSize ),
                     new FinalVoxelDimensions( "\u00B5m", pixelSpacing ),
-                    resolver.getViewSetupConfig( viewSetupId ).getChannel(),
-                    resolver.getViewSetupConfig( viewSetupId ).getAngle(),
-                    resolver.getViewSetupConfig( viewSetupId ).getIllumination() )
+                    setupConfig.getChannel(),
+                    setupConfig.getAngle(),
+                    setupConfig.getIllumination() )
             );
+        }
+        if ( firstTimePoint > lastTimePoint ) {
+            // no ViewSetup has configured time points
+            firstTimePoint = lastTimePoint = 0;
         }
 
         // time points
         final HashMap< Integer, TimePoint > timePointMap = new HashMap< Integer, TimePoint >();
-        for ( int t = resolver.getFirstTimePoint(); t <= resolver.getLastTimePoint(); ++t ) {
+        for ( int t = firstTimePoint; t <= lastTimePoint; ++t ) {
             timePointMap.put( t, new TimePoint( t ) );
         }
         final TimePoints timePoints = new TimePoints( timePointMap );
@@ -74,12 +87,12 @@ public class KlbSpimDataAdapter implements MultiViewDatasetDefinition
         for ( int viewSetupId = 0; viewSetupId < resolver.getNumViewSetups(); ++viewSetupId ) {
             final KlbPartitionResolver.KlbViewSetupConfig setup = resolver.getViewSetupConfig( viewSetupId );
             if ( setup.getTimePoints() == null || setup.getTimePoints().isEmpty() ) {
-                for ( int t = resolver.getFirstTimePoint() + 1; t <= resolver.getLastTimePoint(); ++t ) {
+                for ( int t = firstTimePoint + 1; t <= lastTimePoint; ++t ) {
                     missingViewIds.add( new ViewId( t, viewSetupId ) );
                 }
             } else {
                 final List ts = setup.getTimePoints();
-                for ( int t = resolver.getFirstTimePoint(); t <= resolver.getLastTimePoint(); ++t ) {
+                for ( int t = firstTimePoint; t <= lastTimePoint; ++t ) {
                     if ( !ts.contains( t ) ) {
                         missingViewIds.add( new ViewId( t, viewSetupId ) );
                     }
