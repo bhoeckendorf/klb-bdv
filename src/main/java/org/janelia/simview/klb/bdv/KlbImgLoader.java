@@ -2,7 +2,12 @@ package org.janelia.simview.klb.bdv;
 
 import bdv.ViewerImgLoader;
 import bdv.ViewerSetupImgLoader;
-import bdv.img.cache.*;
+import bdv.cache.CacheControl;
+import bdv.cache.CacheHints;
+import bdv.cache.LoadingStrategy;
+import bdv.img.cache.CachedCellImg;
+import bdv.img.cache.VolatileGlobalCellCache;
+import bdv.img.cache.VolatileImgCells;
 import mpicbg.spim.data.generic.sequence.AbstractSequenceDescription;
 import mpicbg.spim.data.generic.sequence.BasicViewSetup;
 import mpicbg.spim.data.generic.sequence.ImgLoaderHint;
@@ -51,12 +56,7 @@ public class KlbImgLoader implements ViewerImgLoader, MultiResolutionImgLoader
         for ( int i = 0; i < resolver.getNumViewSetups(); ++i ) {
             maxNumResolutionLevels = Math.max( resolver.getViewSetupConfig( i ).getNumResolutionLevels(), maxNumResolutionLevels );
         }
-        cache = new VolatileGlobalCellCache(
-                seq.getTimePoints().size(),
-                resolver.getNumViewSetups(),
-                maxNumResolutionLevels,
-                Threads.numThreads()
-        );
+        cache = new VolatileGlobalCellCache( maxNumResolutionLevels, Threads.numThreads() );
         for ( final BasicViewSetup viewSetup : seq.getViewSetupsOrdered() ) {
             final int id = viewSetup.getId();
             final Type type = this.resolver.getViewSetupConfig( id ).getDataType();
@@ -83,7 +83,7 @@ public class KlbImgLoader implements ViewerImgLoader, MultiResolutionImgLoader
     }
 
     @Override
-    public Cache getCache()
+    public CacheControl getCacheControl()
     {
         return cache;
     }
