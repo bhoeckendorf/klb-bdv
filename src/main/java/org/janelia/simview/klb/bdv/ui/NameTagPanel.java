@@ -3,6 +3,7 @@ package org.janelia.simview.klb.bdv.ui;
 import mpicbg.spim.data.sequence.Angle;
 import mpicbg.spim.data.sequence.Channel;
 import mpicbg.spim.data.sequence.Illumination;
+import mpicbg.spim.data.sequence.Tile;
 import net.miginfocom.swing.MigLayout;
 import org.janelia.simview.klb.KLB;
 import org.janelia.simview.klb.bdv.KlbPartitionResolver;
@@ -87,13 +88,18 @@ public class NameTagPanel extends JPanel implements ActionListener
         final KlbPartitionResolver resolver = new KlbPartitionResolver();
 
         final int angleRow = 0;
-        final int channelRow = 1;
-        final int illuminationRow = 2;
-        final int timeRow = 3;
+        final int tileRow = 1;
+        final int channelRow = 2;
+        final int illuminationRow = 3;
+        final int timeRow = 4;
 
         for ( int angleId = model.getFirstIndex( angleRow ); angleId <= model.getLastIndex( angleRow ); angleId += model.getIndexStride( angleRow ) )
         {
             resolver.addAngle( new Angle( angleId ) );
+        }
+        for ( int tileId = model.getFirstIndex( tileRow ); tileId <= model.getLastIndex( tileRow ); tileId += model.getIndexStride( tileRow ) )
+        {
+            resolver.addTile( new Tile( tileId ) );
         }
         for ( int channelId = model.getFirstIndex( channelRow ); channelId <= model.getLastIndex( channelRow ); channelId += model.getIndexStride( channelRow ) )
         {
@@ -106,11 +112,13 @@ public class NameTagPanel extends JPanel implements ActionListener
 
         final String templateFilePath = filePathEdit.getText().trim();
         final String angleTag = model.getValueAt( angleRow, 1 ).toString();
+        final String tileTag = model.getValueAt( tileRow, 1).toString();
         final String channelTag = model.getValueAt( channelRow, 1 ).toString();
         final String illuminationTag = model.getValueAt( illuminationRow, 1 ).toString();
         final String timeTag = model.getValueAt( timeRow, 1 ).toString();
 
         final String[] angleMatchAndFormat = angleTag.isEmpty() ? null : resolver.getTagMatchAndFormat( templateFilePath, angleTag );
+        final String[] tileMatchAndFormat = tileTag.isEmpty() ? null : resolver.getTagMatchAndFormat( templateFilePath, tileTag );
         final String[] channelMatchAndFormat = channelTag.isEmpty() ? null : resolver.getTagMatchAndFormat( templateFilePath, channelTag );
         final String[] illuminationMatchAndFormat = illuminationTag.isEmpty() ? null : resolver.getTagMatchAndFormat( templateFilePath, illuminationTag );
         final String[] timeMatchAndFormat = timeTag.isEmpty() ? null : resolver.getTagMatchAndFormat( templateFilePath, timeTag );
@@ -120,37 +128,45 @@ public class NameTagPanel extends JPanel implements ActionListener
             if ( angleMatchAndFormat != null ) {
                 filePath = filePath.replaceAll( angleMatchAndFormat[ 0 ], String.format( angleMatchAndFormat[ 1 ], angle.getId() ) );
             }
-            for ( final Channel channel : ( List< Channel > ) resolver.getChannels() ) {
-                if ( channelMatchAndFormat != null ) {
-                    final String newField = String.format( channelMatchAndFormat[ 1 ], channel.getId() );
-                    filePath = filePath.replaceAll( channelMatchAndFormat[ 0 ], newField );
-                    channelMatchAndFormat[ 0 ] = newField;
+            for ( final Tile tile : ( List< Tile > ) resolver.getTiles() ) {
+                if ( tileMatchAndFormat != null ) {
+                    final String newField = String.format( tileMatchAndFormat[ 1 ], tile.getId() );
+                    filePath = filePath.replaceAll( tileMatchAndFormat[ 0 ], newField );
+                    tileMatchAndFormat[ 0 ] = newField;
                 }
-                for ( final Illumination illumination : ( List< Illumination > ) resolver.getIlluminations() ) {
-                    if ( illuminationMatchAndFormat != null ) {
-                        final String newField = String.format( illuminationMatchAndFormat[ 1 ], illumination.getId() );
-                        filePath = filePath.replaceAll( illuminationMatchAndFormat[ 0 ], newField );
-                        illuminationMatchAndFormat[ 0 ] = newField;
+                for (final Channel channel : (List<Channel>) resolver.getChannels()) {
+                    if (channelMatchAndFormat != null) {
+                        final String newField = String.format(channelMatchAndFormat[1], channel.getId());
+                        filePath = filePath.replaceAll(channelMatchAndFormat[0], newField);
+                        channelMatchAndFormat[0] = newField;
                     }
-                    KlbPartitionResolver.KlbViewSetupConfig setup = null;
-                    if ( timeMatchAndFormat != null ) {
-                        setup = resolver.addViewSetup( filePath, timeTag );
-                    } else {
-                        setup = resolver.addViewSetup( filePath );
+                    for (final Illumination illumination : (List<Illumination>) resolver.getIlluminations()) {
+                        if (illuminationMatchAndFormat != null) {
+                            final String newField = String.format(illuminationMatchAndFormat[1], illumination.getId());
+                            filePath = filePath.replaceAll(illuminationMatchAndFormat[0], newField);
+                            illuminationMatchAndFormat[0] = newField;
+                        }
+                        KlbPartitionResolver.KlbViewSetupConfig setup = null;
+                        if (timeMatchAndFormat != null) {
+                            setup = resolver.addViewSetup(filePath, timeTag);
+                        } else {
+                            setup = resolver.addViewSetup(filePath);
+                        }
+                        if (setup == null) {
+                            continue;
+                        }
+                        setup.setName("" + setup.getId());
+                        setup.setAngleId(angle.getId());
+                        setup.setTileId( tile.getId() );
+                        setup.setChannelId(channel.getId());
+                        setup.setIlluminationId(illumination.getId());
                     }
-                    if ( setup == null ) {
-                        continue;
-                    }
-                    setup.setName( "" + setup.getId() );
-                    setup.setAngleId( angle.getId() );
-                    setup.setChannelId( channel.getId() );
-                    setup.setIlluminationId( illumination.getId() );
                 }
             }
         }
 
         final List< Integer > timePoints = new ArrayList< Integer >();
-        for ( int t = Integer.parseInt( model.getValueAt( 3, 2 ).toString() ); t <= Integer.parseInt( model.getValueAt( 3, 3 ).toString() ); t += Integer.parseInt( model.getValueAt( 3, 4 ).toString() ) )
+        for ( int t = Integer.parseInt( model.getValueAt( 4, 2 ).toString() ); t <= Integer.parseInt( model.getValueAt( 4, 3 ).toString() ); t += Integer.parseInt( model.getValueAt( 4, 4 ).toString() ) )
         {
             timePoints.add( t );
         }
@@ -228,11 +244,11 @@ public class NameTagPanel extends JPanel implements ActionListener
         private final String[] columnHeaders = {
                 "Dimension", "File Path Tag", "First", "Last", "Stride" };
         private final Object[][] data = {
-                { "Angle/Tile", "Color channel", "Illumination", "Time" },
-                { "CM", "CHN", "", "TM" },
-                { "", "", "", "" },
-                { "", "", "", "" },
-                { "", "", "", "" }
+                { "Angle", "Tile", "Color channel", "Illumination", "Time" },
+                { "CM", "SPM", "CHN", "", "TM" },
+                { "", "", "", "", "" },
+                { "", "", "", "", "" },
+                { "", "", "", "", "" }
         };
 
         public void updateTemplate()
@@ -278,7 +294,7 @@ public class NameTagPanel extends JPanel implements ActionListener
         @Override
         public int getRowCount()
         {
-            return 4; //data.length;
+            return 5; //data[0].length;
         }
 
         @Override

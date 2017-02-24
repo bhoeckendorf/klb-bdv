@@ -3,6 +3,7 @@ package org.janelia.simview.klb.bdv;
 import mpicbg.spim.data.sequence.Angle;
 import mpicbg.spim.data.sequence.Channel;
 import mpicbg.spim.data.sequence.Illumination;
+import mpicbg.spim.data.sequence.Tile;
 import net.imagej.ImgPlus;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
@@ -33,6 +34,7 @@ public class KlbPartitionResolver< T extends RealType< T > & NativeType< T > >
     private final KLB klb = KLB.newInstance();
     private final List< KlbViewSetupConfig > viewSetupConfigs = new ArrayList< KlbViewSetupConfig >();
     private final Map< Integer, Angle > angles = new HashMap< Integer, Angle >();
+    private final Map< Integer, Tile > tiles = new HashMap< Integer, Tile >();
     private final Map< Integer, Channel > channels = new HashMap< Integer, Channel >();
     private final Map< Integer, Illumination > illuminations = new HashMap< Integer, Illumination >();
 
@@ -126,6 +128,23 @@ public class KlbPartitionResolver< T extends RealType< T > & NativeType< T > >
         final List< Channel > list = new ArrayList< Channel >( channels.values() );
         Collections.sort( list );
         return list;
+    }
+
+    public List< Tile > getTiles()
+    {
+        final List< Tile > list = new ArrayList< Tile >( tiles.values() );
+        Collections.sort( list );
+        return list;
+    }
+
+    public Tile getTile( final int tileId )
+    {
+        return tiles.get( tileId );
+    }
+
+    public void addTile( final Tile tile )
+    {
+        tiles.put( tile.getId(), tile );
     }
 
     public Channel getChannel( final int channelId )
@@ -359,7 +378,7 @@ public class KlbPartitionResolver< T extends RealType< T > & NativeType< T > >
         private final List< KLB.Header > headers = new ArrayList< KLB.Header >();
         private final double[] pixelSpacing = { 1, 1, 1 };
 
-        private int angleId = -1, channelId = -1, illuminationId = -1;
+        private int angleId = -1, tileId = -1, channelId = -1, illuminationId = -1;
         private String name = "";
         private List< Integer > timePoints = null;
 
@@ -559,6 +578,18 @@ public class KlbPartitionResolver< T extends RealType< T > & NativeType< T > >
         public Angle getAngle()
         {
             return angles.get( getAngleId() );
+        }
+
+        public int getTileId() {
+            return tileId;
+        }
+
+        public void setTileId( final int id ) {
+            tileId = id;
+        }
+
+        public Tile getTile() {
+            return tiles.get( getTileId() );
         }
 
         public int getChannelId()

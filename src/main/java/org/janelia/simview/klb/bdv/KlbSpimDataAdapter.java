@@ -65,6 +65,7 @@ public class KlbSpimDataAdapter implements MultiViewDatasetDefinition
                     viewSetupId, setupConfig.getName(),
                     new FinalDimensions( imageSize ),
                     new FinalVoxelDimensions( "\u00B5m", pixelSpacing ),
+                    setupConfig.getTile(),
                     setupConfig.getChannel(),
                     setupConfig.getAngle(),
                     setupConfig.getIllumination() )
