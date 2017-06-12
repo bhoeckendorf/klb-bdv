@@ -52,15 +52,4 @@ public class KlbVolatileArrayLoaderFloat32 extends KlbVolatileArrayLoader< Float
             return new VolatileFloatArray( buffer, true );
         }
     }
-
-    @Override
-    public VolatileFloatArray emptyArray( final int[] dimensions )
-    {
-        int numEntities = 1;
-        for ( int d : dimensions )
-            numEntities *= d;
-        if ( theEmptyArray.getCurrentStorageArray().length < numEntities )
-            theEmptyArray = new VolatileFloatArray( numEntities, false );
-        return theEmptyArray;
-    }
 }

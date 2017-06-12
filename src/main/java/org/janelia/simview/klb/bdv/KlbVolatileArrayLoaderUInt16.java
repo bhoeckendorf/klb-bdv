@@ -52,15 +52,4 @@ public class KlbVolatileArrayLoaderUInt16 extends KlbVolatileArrayLoader< Unsign
             return new VolatileShortArray( buffer, true );
         }
     }
-
-    @Override
-    public VolatileShortArray emptyArray( final int[] dimensions )
-    {
-        int numEntities = 1;
-        for ( int d : dimensions )
-            numEntities *= d;
-        if ( theEmptyArray.getCurrentStorageArray().length < numEntities )
-            theEmptyArray = new VolatileShortArray( numEntities, false );
-        return theEmptyArray;
-    }
 }

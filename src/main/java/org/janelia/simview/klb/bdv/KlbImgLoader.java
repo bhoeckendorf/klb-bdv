@@ -3,11 +3,8 @@ package org.janelia.simview.klb.bdv;
 import bdv.ViewerImgLoader;
 import bdv.ViewerSetupImgLoader;
 import bdv.cache.CacheControl;
-import bdv.cache.CacheHints;
-import bdv.cache.LoadingStrategy;
-import bdv.img.cache.CachedCellImg;
+import bdv.img.cache.VolatileCachedCellImg;
 import bdv.img.cache.VolatileGlobalCellCache;
-import bdv.img.cache.VolatileImgCells;
 import mpicbg.spim.data.generic.sequence.AbstractSequenceDescription;
 import mpicbg.spim.data.generic.sequence.BasicViewSetup;
 import mpicbg.spim.data.generic.sequence.ImgLoaderHint;
@@ -17,10 +14,12 @@ import mpicbg.spim.data.sequence.MultiResolutionImgLoader;
 import mpicbg.spim.data.sequence.MultiResolutionSetupImgLoader;
 import mpicbg.spim.data.sequence.VoxelDimensions;
 import net.imglib2.*;
+import net.imglib2.cache.volatiles.CacheHints;
+import net.imglib2.cache.volatiles.LoadingStrategy;
 import net.imglib2.img.Img;
 import net.imglib2.img.ImgFactory;
 import net.imglib2.img.array.ArrayImgFactory;
-import net.imglib2.img.basictypeaccess.volatiles.array.AbstractVolatileArray;
+import net.imglib2.img.cell.CellGrid;
 import net.imglib2.img.cell.CellImgFactory;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.NativeType;
@@ -29,7 +28,6 @@ import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.type.numeric.integer.UnsignedShortType;
 import net.imglib2.type.numeric.real.FloatType;
-import net.imglib2.util.Fraction;
 import net.imglib2.util.Intervals;
 import net.imglib2.view.Views;
 import spim.Threads;
@@ -89,7 +87,7 @@ public class KlbImgLoader implements ViewerImgLoader, MultiResolutionImgLoader
     }
 
 
-    public class KlbSetupImgLoader< T extends RealType< T > & NativeType< T >, V extends Volatile< T > & NativeType< V >, A extends AbstractVolatileArray< A > > implements ViewerSetupImgLoader< T, V >, MultiResolutionSetupImgLoader< T >
+    public class KlbSetupImgLoader< T extends RealType< T > & NativeType< T >, V extends Volatile< T > & NativeType< V >, A > implements ViewerSetupImgLoader< T, V >, MultiResolutionSetupImgLoader< T >
     {
         private final int viewSetupId;
         private final long[] imageSize = new long[ 3 ];
@@ -139,7 +137,7 @@ public class KlbImgLoader implements ViewerImgLoader, MultiResolutionImgLoader
                     e.printStackTrace();
                 }
             }
-            final CachedCellImg< T, A > img = prepareCachedImage( timePointId, level, LoadingStrategy.BLOCKING );
+            final VolatileCachedCellImg< T, A > img = prepareCachedImage( timePointId, level, LoadingStrategy.BLOCKING );
             if ( typeConstructor == null ) {
                 for ( final Constructor< ? > c : getImageType().getClass().getConstructors() ) {
                     typeConstructor = ( Constructor< T > ) c;
@@ -269,7 +267,7 @@ public class KlbImgLoader implements ViewerImgLoader, MultiResolutionImgLoader
         @Override
         public RandomAccessibleInterval< V > getVolatileImage( final int timePointId, final int level, final ImgLoaderHint... hints )
         {
-            final CachedCellImg< V, A > img = prepareCachedImage( timePointId, level, LoadingStrategy.VOLATILE );
+            final VolatileCachedCellImg< V, A > img = prepareCachedImage( timePointId, level, LoadingStrategy.VOLATILE );
             if ( volatileTypeConstructor == null ) {
                 for ( final Constructor< ? > c : getVolatileImageType().getClass().getConstructors() ) {
                     volatileTypeConstructor = ( Constructor< V > ) c;
@@ -291,15 +289,19 @@ public class KlbImgLoader implements ViewerImgLoader, MultiResolutionImgLoader
             }
         }
 
-        private < T extends NativeType< T > > CachedCellImg< T, A > prepareCachedImage( final int timePointId, final int level, final LoadingStrategy loadingStrategy )
+        private < T extends NativeType< T > > VolatileCachedCellImg< T, A > prepareCachedImage( final int timePointId, final int level, final LoadingStrategy loadingStrategy )
         {
             resolver.getImageSize( viewSetupId, level, imageSize );
             resolver.getBlockSize( viewSetupId, level, blockSize );
             final int priority = resolver.getNumResolutionLevels( viewSetupId ) - 1 - level;
             final CacheHints cacheHints = new CacheHints( loadingStrategy, priority, false );
-            final VolatileImgCells.CellCache< A > c = cache.new VolatileCellCache( timePointId, viewSetupId, level, cacheHints, arrayLoader );
-            final VolatileImgCells< A > cells = new VolatileImgCells< A >( c, new Fraction(), imageSize, blockSize );
-            return new CachedCellImg< T, A >( cells );
+            //final VolatileImgCells.CellCache< A > c = cache.new VolatileCellCache( timePointId, viewSetupId, level, cacheHints, arrayLoader );
+            //final VolatileImgCells< A > cells = new VolatileImgCells< A >( c, new Fraction(), imageSize, blockSize );
+            //return new VolatileCachedCellImg< T, A >( cells );
+
+
+            final CellGrid grid = new CellGrid( imageSize, blockSize );
+            return cache.createImg( grid, timePointId, viewSetupId, level, cacheHints, arrayLoader, (T) arrayLoader.getType() );
         }
 
         // copied from bdv.img.hdf5.Hdf5ImageLoader by Tobias Pietzsch et al.

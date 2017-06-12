@@ -52,15 +52,4 @@ public class KlbVolatileArrayLoaderUInt8 extends KlbVolatileArrayLoader< Unsigne
             return new VolatileByteArray( buffer, true );
         }
     }
-
-    @Override
-    public VolatileByteArray emptyArray( final int[] dimensions )
-    {
-        int numEntities = 1;
-        for ( int d : dimensions )
-            numEntities *= d;
-        if ( theEmptyArray.getCurrentStorageArray().length < numEntities )
-            theEmptyArray = new VolatileByteArray( numEntities, false );
-        return theEmptyArray;
-    }
 }

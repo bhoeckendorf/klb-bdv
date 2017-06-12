@@ -2,12 +2,11 @@ package org.janelia.simview.klb.bdv;
 
 import bdv.img.cache.CacheArrayLoader;
 import net.imglib2.Volatile;
-import net.imglib2.img.basictypeaccess.volatiles.array.AbstractVolatileArray;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
 import org.janelia.simview.klb.KLB;
 
-public abstract class KlbVolatileArrayLoader< T extends RealType< T > & NativeType< T >, V extends Volatile< T > & NativeType< V >, A extends AbstractVolatileArray< A > > implements CacheArrayLoader< A >
+public abstract class KlbVolatileArrayLoader< T extends RealType< T > & NativeType< T >, V extends Volatile< T > & NativeType< V >, A > implements CacheArrayLoader< A >
 {
     protected final KLB klb = KLB.newInstance();
     private final KlbPartitionResolver resolver;
