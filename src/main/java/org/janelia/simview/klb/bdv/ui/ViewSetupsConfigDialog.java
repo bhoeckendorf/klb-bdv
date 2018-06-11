@@ -8,12 +8,16 @@ import net.miginfocom.swing.MigLayout;
 import org.janelia.simview.klb.bdv.KlbPartitionResolver;
 import org.janelia.simview.klb.bdv.KlbSpimDataAdapter;
 import net.preibisch.mvrecon.fiji.spimdata.SpimData2;
+import org.scijava.ui.UIService;
+import org.scijava.widget.FileWidget;
 
 import javax.swing.*;
 import java.awt.event.*;
+import java.io.File;
 
 public class ViewSetupsConfigDialog extends JDialog implements ActionListener
 {
+    private final UIService uiService;
     private final NameTagPanel nameTagPanel;
     private final JTabbedPane tabPane = new JTabbedPane();
     private final JButton viewButton = new JButton( "View in Big Data Viewer" );
@@ -21,10 +25,11 @@ public class ViewSetupsConfigDialog extends JDialog implements ActionListener
     private final JButton saveXmlButton = new JButton( "Save XML" );
     private final JButton cancelButton = new JButton( "Cancel" );
 
-    public ViewSetupsConfigDialog()
+    public ViewSetupsConfigDialog(final UIService uiService)
     {
+        this.uiService = uiService;
         KlbPartitionResolver resolver = new KlbPartitionResolver();
-        nameTagPanel = new NameTagPanel();
+        nameTagPanel = new NameTagPanel(this.uiService);
 
         tabPane.add( "Basic", nameTagPanel );
 
@@ -76,28 +81,29 @@ public class ViewSetupsConfigDialog extends JDialog implements ActionListener
 
     private String saveXML()
     {
-        final JFileChooser chooser = new JFileChooser( Global.getCurrentOrDefaultPath() );
-        chooser.setFileSelectionMode( JFileChooser.FILES_ONLY );
-        if ( chooser.showSaveDialog( this ) == JFileChooser.APPROVE_OPTION ) {
-            String filePath = chooser.getSelectedFile().getAbsolutePath();
-            if ( !filePath.endsWith( ".xml" ) ) {
-                filePath += ".xml";
-            }
+        final File file = uiService.chooseFile(null, FileWidget.SAVE_STYLE);
+        if (file == null)
+            return null;
 
-            final KlbPartitionResolver resolver = getResolver();
-            final KlbSpimDataAdapter spimDataAdapter = new KlbSpimDataAdapter( resolver );
-
-            try {
-                spimDataAdapter.writeXML( filePath );
-                return filePath;
-            } catch ( SpimDataException ex ) {
-                ex.printStackTrace();
-                JOptionPane.showMessageDialog( this,
-                        "Failed to save XML.",
-                        "Error",
-                        JOptionPane.ERROR_MESSAGE );
-            }
+        String filePath = file.getAbsolutePath();
+        if ( !filePath.endsWith( ".xml" ) ) {
+            filePath += ".xml";
         }
+
+        final KlbPartitionResolver resolver = getResolver();
+        final KlbSpimDataAdapter spimDataAdapter = new KlbSpimDataAdapter( resolver );
+
+        try {
+            spimDataAdapter.writeXML( filePath );
+            return filePath;
+        } catch ( SpimDataException ex ) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog( this,
+                    "Failed to save XML.",
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE );
+        }
+
         return null;
     }
 

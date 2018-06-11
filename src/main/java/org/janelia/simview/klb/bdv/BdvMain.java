@@ -1,3 +1,4 @@
+/*
 package org.janelia.simview.klb.bdv;
 
 import org.janelia.simview.klb.bdv.ui.ViewSetupsConfigDialog;
@@ -20,3 +21,4 @@ public class BdvMain
         } );
     }
 }
+*/

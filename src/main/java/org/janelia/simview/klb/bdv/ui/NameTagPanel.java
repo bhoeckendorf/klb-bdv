@@ -7,6 +7,8 @@ import mpicbg.spim.data.sequence.Tile;
 import net.miginfocom.swing.MigLayout;
 import org.janelia.simview.klb.KLB;
 import org.janelia.simview.klb.bdv.KlbPartitionResolver;
+import org.scijava.ui.UIService;
+import org.scijava.widget.FileWidget;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -20,8 +22,9 @@ import java.util.List;
 public class NameTagPanel extends JPanel implements ActionListener
 {
     private final KLB klb = KLB.newInstance();
+    private final UIService uiService;
     private final NameTagTableModel model;
-    private final JTextField filePathEdit = new JTextField( Global.getCurrentOrDefaultPath() );
+    private final JTextField filePathEdit = new JTextField( System.getProperty( "user.home" ) );
     private final JButton filePathButton = new JButton( "..." );
     private final JCheckBox overrideSamplingCheckbox = new JCheckBox( "Manually specify pixel spacing (\u00B5m)" );
     private final JCheckBox checkTimePointsCheckBox = new JCheckBox( "Check for (and handle) missing files" );
@@ -34,8 +37,9 @@ public class NameTagPanel extends JPanel implements ActionListener
             pixelSpacingYLabel = new JLabel( "y" ),
             pixelSpacingZLabel = new JLabel( "z" );
 
-    public NameTagPanel()
+    public NameTagPanel(final UIService uiService)
     {
+        this.uiService = uiService;
         model = new NameTagTableModel();
         final JTable table = new JTable( model );
         filePathButton.addActionListener( this );
@@ -201,15 +205,14 @@ public class NameTagPanel extends JPanel implements ActionListener
     {
         final Object source = e.getSource();
         if ( source == filePathButton ) {
-            final JFileChooser chooser = new JFileChooser( Global.getCurrentOrDefaultPath( filePathEdit.getText().trim() ) );
-            chooser.setFileSelectionMode( JFileChooser.FILES_ONLY );
-            if ( chooser.showOpenDialog( this ) == JFileChooser.APPROVE_OPTION ) {
-                final String filePath = chooser.getSelectedFile().getAbsolutePath();
-                filePathEdit.setText( filePath );
-                Global.updateCurrentPath( filePath );
-                model.updateTemplate();
-                updatePixelSpacing();
-            }
+            final File file = uiService.chooseFile(new File(Global.getCurrentOrDefaultPath()), FileWidget.OPEN_STYLE);
+            if (file == null)
+                return;
+            String filePath = file.getAbsolutePath();
+            Global.updateCurrentPath(filePath);
+            filePathEdit.setText( filePath );
+            model.updateTemplate();
+            updatePixelSpacing();
         } else if ( source == overrideSamplingCheckbox ) {
             if ( overrideSamplingCheckbox.isSelected() ) {
                 pixelSpacingXLabel.setEnabled( true );
