@@ -30,7 +30,6 @@ import net.imglib2.type.numeric.integer.UnsignedShortType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Intervals;
 import net.imglib2.view.Views;
-import spim.Threads;
 
 import java.io.IOException;
 import java.lang.reflect.Constructor;
@@ -54,7 +53,7 @@ public class KlbImgLoader implements ViewerImgLoader, MultiResolutionImgLoader
         for ( int i = 0; i < resolver.getNumViewSetups(); ++i ) {
             maxNumResolutionLevels = Math.max( resolver.getViewSetupConfig( i ).getNumResolutionLevels(), maxNumResolutionLevels );
         }
-        cache = new VolatileGlobalCellCache( maxNumResolutionLevels, Threads.numThreads() );
+        cache = new VolatileGlobalCellCache( maxNumResolutionLevels, Runtime.getRuntime().availableProcessors() );
         for ( final BasicViewSetup viewSetup : seq.getViewSetupsOrdered() ) {
             final int id = viewSetup.getId();
             final Type type = this.resolver.getViewSetupConfig( id ).getDataType();
@@ -191,7 +190,7 @@ public class KlbImgLoader implements ViewerImgLoader, MultiResolutionImgLoader
             final ArrayList< Callable< Void > > tasks = new ArrayList< Callable< Void > >();
 
             // set up all tasks
-            final int numPortions = Threads.numThreads();
+            final int numPortions = Runtime.getRuntime().availableProcessors();
             final long threadChunkSize = floatImg.size() / numPortions;
             final long threadChunkMod = floatImg.size() % numPortions;
 

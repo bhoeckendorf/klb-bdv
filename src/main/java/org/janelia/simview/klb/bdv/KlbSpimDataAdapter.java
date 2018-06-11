@@ -7,8 +7,8 @@ import mpicbg.spim.data.registration.ViewRegistrations;
 import mpicbg.spim.data.sequence.*;
 import net.imglib2.FinalDimensions;
 import net.imglib2.realtransform.AffineTransform3D;
-import spim.fiji.datasetmanager.MultiViewDatasetDefinition;
-import spim.fiji.spimdata.SpimData2;
+import net.preibisch.mvrecon.fiji.datasetmanager.MultiViewDatasetDefinition;
+import net.preibisch.mvrecon.fiji.spimdata.SpimData2;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -136,7 +136,7 @@ public class KlbSpimDataAdapter implements MultiViewDatasetDefinition
         }
 
         // combine all the above into a SpimData2
-        return new SpimData2( new File( System.getProperty( "user.home" ) ), seq, new ViewRegistrations( registrations ), null, null );
+        return new SpimData2( new File( System.getProperty( "user.home" ) ), seq, new ViewRegistrations( registrations ), null, null, null, null );
     }
 
     @Override

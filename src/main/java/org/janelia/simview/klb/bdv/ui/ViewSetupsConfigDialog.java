@@ -7,7 +7,7 @@ import mpicbg.spim.data.SpimDataException;
 import net.miginfocom.swing.MigLayout;
 import org.janelia.simview.klb.bdv.KlbPartitionResolver;
 import org.janelia.simview.klb.bdv.KlbSpimDataAdapter;
-import spim.fiji.spimdata.SpimData2;
+import net.preibisch.mvrecon.fiji.spimdata.SpimData2;
 
 import javax.swing.*;
 import java.awt.event.*;
