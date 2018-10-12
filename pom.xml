@@ -7,13 +7,12 @@
     <parent>
         <groupId>org.scijava</groupId>
         <artifactId>pom-scijava</artifactId>
-        <version>22.4.0-SNAPSHOT</version>
+        <version>23.1.1</version>
     </parent>
 
     <groupId>org.janelia.simview</groupId>
     <artifactId>klb-bdv</artifactId>
-    <version>0.2.1</version>
-    <packaging>jar</packaging>
+    <version>0.2.2-SNAPSHOT</version>
 
     <name>Keller Lab Block file type (.klb) - BigDataViewer backend</name>
     <description>The KLB is a file format developed at the Keller Lab at Janelia Research Campus to efficiently store
@@ -29,19 +28,15 @@
         <dependency>
             <groupId>org.janelia.simview</groupId>
             <artifactId>klb</artifactId>
-            <version>[LATEST,)</version>
-        </dependency>
-        <dependency>
-            <groupId>net.imglib2</groupId>
-            <artifactId>imglib2</artifactId>
+            <version>${klb.version}</version>
         </dependency>
         <dependency>
             <groupId>sc.fiji</groupId>
             <artifactId>bigdataviewer-core</artifactId>
         </dependency>
         <dependency>
-            <groupId>net.preibisch</groupId>
-            <artifactId>multiview-reconstruction</artifactId>
+            <groupId>sc.fiji</groupId>
+            <artifactId>SPIM_Registration</artifactId>
         </dependency>
         <dependency>
             <groupId>com.miglayout</groupId>
@@ -52,16 +47,8 @@
 
     <repositories>
         <repository>
-            <id>ImageJ.Releases</id>
-            <url>http://maven.imagej.net/content/repositories/releases</url>
-        </repository>
-        <repository>
-            <id>ImageJ.Public</id>
-            <url>http://maven.imagej.net/content/repositories/public</url>
-        </repository>
-        <repository>
-            <id>ImageJ.3rdParty</id>
-            <url>http://maven.imagej.net/content/repositories/thirdparty</url>
+            <id>imagej.public</id>
+            <url>https://maven.imagej.net/content/groups/public</url>
         </repository>
     </repositories>
 
@@ -84,7 +71,8 @@
     </build>
 
     <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <additionalparam>-Xdoclint:none</additionalparam>
+        <klb.version>0.3.4</klb.version>
         <enforcer.skip>true</enforcer.skip>
     </properties>
 </project>

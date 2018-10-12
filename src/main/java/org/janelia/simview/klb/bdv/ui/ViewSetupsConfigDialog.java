@@ -7,13 +7,14 @@ import mpicbg.spim.data.SpimDataException;
 import net.miginfocom.swing.MigLayout;
 import org.janelia.simview.klb.bdv.KlbPartitionResolver;
 import org.janelia.simview.klb.bdv.KlbSpimDataAdapter;
-import net.preibisch.mvrecon.fiji.spimdata.SpimData2;
 import org.scijava.ui.UIService;
 import org.scijava.widget.FileWidget;
 
 import javax.swing.*;
 import java.awt.event.*;
 import java.io.File;
+
+import spim.fiji.spimdata.SpimData2;
 
 public class ViewSetupsConfigDialog extends JDialog implements ActionListener
 {

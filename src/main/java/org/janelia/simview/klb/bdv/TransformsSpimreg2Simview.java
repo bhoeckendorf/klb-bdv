@@ -10,8 +10,6 @@ import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
-import net.preibisch.mvrecon.fiji.spimdata.SpimData2;
-import net.preibisch.mvrecon.fiji.spimdata.XmlIoSpimData2;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -24,6 +22,9 @@ import java.io.File;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import spim.fiji.spimdata.SpimData2;
+import spim.fiji.spimdata.XmlIoSpimData2;
 
 @Plugin( type = Command.class, menuPath = "Plugins>Multiview Reconstruction>Convert transforms to SiMView" )
 public class TransformsSpimreg2Simview implements Command
