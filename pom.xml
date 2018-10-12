@@ -21,11 +21,73 @@
 		cores making it much faster than JPEG2000 and HDF5 in common multi-core machines.
 	</description>
 	<url>https://github.com/bhoeckendorf/klb-bdv</url>
+	<inceptionYear>2014</inceptionYear>
+	<organization>
+		<name>HHMI Janelia Research Campus</name>
+		<url>https://www.janelia.org/</url>
+	</organization>
+	<licenses>
+		<license>
+			<name>Janelia Farm Research Campus Software Copyright 1.1</name>
+			<distribution>repo</distribution>
+			<url>http://license.janelia.org/license/jfrc_copyright_1_1.html</url>
+		</license>
+	</licenses>
+
+	<developers>
+		<developer>
+			<id>bhoeckendorf</id>
+			<name>Burkhard Hoeckendorf</name>
+			<roles>
+				<role>founder</role>
+				<role>lead</role>
+				<role>maintainer</role>
+			</roles>
+		</developer>
+	</developers>
+	<contributors>
+		<contributor>
+			<name>Fernando Amat</name>
+			<roles><role>founder</role></roles>
+			<properties><id>fernandoamat</id></properties>
+		</contributor>
+		<contributor>
+			<name>Curtis Rueden</name>
+			<url>https://imagej.net/User:Rueden</url>
+			<properties><id>ctrueden</id></properties>
+		</contributor>
+		<contributor>
+			<name>Yinan Wan</name>
+		</contributor>
+	</contributors>
+
+	<mailingLists>
+		<mailingList>
+			<name>Image.sc Forum</name>
+			<archive>https://forum.image.sc/</archive>
+		</mailingList>
+	</mailingLists>
+
+	<scm>
+		<connection>scm:git:git://github.com/bhoeckendorf/klb-bdv</connection>
+		<developerConnection>scm:git:git@github.com:bhoeckendorf/klb-bdv</developerConnection>
+		<tag>HEAD</tag>
+		<url>https://github.com/bhoeckendorf/klb-bdv</url>
+	</scm>
+	<issueManagement>
+		<system>GitHub Issues</system>
+		<url>https://github.com/bhoeckendorf/klb-bdv/issues</url>
+	</issueManagement>
+	<ciManagement>
+		<system>None</system>
+	</ciManagement>
 
 	<properties>
+		<package-name>org.janelia.simview.klb.bdv</package-name>
+		<license.licenseName>jfrc</license.licenseName>
+		<license.copyrightOwners>Howard Hughes Medical Institute.</license.copyrightOwners>
 		<additionalparam>-Xdoclint:none</additionalparam>
 		<klb.version>0.3.4</klb.version>
-		<enforcer.skip>true</enforcer.skip>
 	</properties>
 
 	<repositories>
