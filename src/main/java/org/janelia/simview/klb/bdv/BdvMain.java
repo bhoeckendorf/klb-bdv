@@ -14,7 +14,7 @@ public class BdvMain
         {
             public void run()
             {
-                final ViewSetupsConfigDialog dialog = new ViewSetupsConfigDialog();
+                final ViewSetupsConfigDialog dialog = new ViewSetupsConfigDialog(null);
                 dialog.setLocationRelativeTo( null );
                 dialog.setVisible( true );
             }
