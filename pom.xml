@@ -1,90 +1,138 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xmlns="http://maven.apache.org/POM/4.0.0"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
 
-    <parent>
-        <groupId>org.scijava</groupId>
-        <artifactId>pom-scijava</artifactId>
-        <version>22.4.0-SNAPSHOT</version>
-    </parent>
+	<parent>
+		<groupId>org.scijava</groupId>
+		<artifactId>pom-scijava</artifactId>
+		<version>23.1.1</version>
+	</parent>
 
-    <groupId>org.janelia.simview</groupId>
-    <artifactId>klb-bdv</artifactId>
-    <version>0.2.1</version>
-    <packaging>jar</packaging>
+	<groupId>org.janelia.simview</groupId>
+	<artifactId>klb-bdv</artifactId>
+	<version>0.2.2-SNAPSHOT</version>
 
-    <name>Keller Lab Block file type (.klb) - BigDataViewer backend</name>
-    <description>The KLB is a file format developed at the Keller Lab at Janelia Research Campus to efficiently store
-        and retrieve large 5D images (>4GB) using lossless compression. The format tries to combine the JPEG2000
-        lossless compression levels with the block flexibility offered by HDF5 to access arbitrary regions of interest.
-        Inspired by Parallel BZIP2, a common Linux command, we partition images into blocks and each block is compressed
-        in parallel using the Bzip2. Both reading and writing are parallelized and scale linearly with the number of
-        cores making it much faster than JPEG2000 and HDF5 in common multi-core machines.
-    </description>
-    <url>https://github.com/bhoeckendorf/klb-bdv</url>
+	<name>Keller Lab Block file type (.klb) - BigDataViewer backend</name>
+	<description>The KLB is a file format developed at the Keller Lab at Janelia Research Campus to efficiently store
+		and retrieve large 5D images (>4GB) using lossless compression. The format tries to combine the JPEG2000
+		lossless compression levels with the block flexibility offered by HDF5 to access arbitrary regions of interest.
+		Inspired by Parallel BZIP2, a common Linux command, we partition images into blocks and each block is compressed
+		in parallel using the Bzip2. Both reading and writing are parallelized and scale linearly with the number of
+		cores making it much faster than JPEG2000 and HDF5 in common multi-core machines.
+	</description>
+	<url>https://github.com/bhoeckendorf/klb-bdv</url>
+	<inceptionYear>2014</inceptionYear>
+	<organization>
+		<name>HHMI Janelia Research Campus</name>
+		<url>https://www.janelia.org/</url>
+	</organization>
+	<licenses>
+		<license>
+			<name>Janelia Farm Research Campus Software Copyright 1.1</name>
+			<distribution>repo</distribution>
+			<url>http://license.janelia.org/license/jfrc_copyright_1_1.html</url>
+		</license>
+	</licenses>
 
-    <dependencies>
-        <dependency>
-            <groupId>org.janelia.simview</groupId>
-            <artifactId>klb</artifactId>
-            <version>[LATEST,)</version>
-        </dependency>
-        <dependency>
-            <groupId>net.imglib2</groupId>
-            <artifactId>imglib2</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>sc.fiji</groupId>
-            <artifactId>bigdataviewer-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>net.preibisch</groupId>
-            <artifactId>multiview-reconstruction</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.miglayout</groupId>
-            <artifactId>miglayout</artifactId>
-            <classifier>swing</classifier>
-        </dependency>
-    </dependencies>
+	<developers>
+		<developer>
+			<id>bhoeckendorf</id>
+			<name>Burkhard Hoeckendorf</name>
+			<roles>
+				<role>founder</role>
+				<role>lead</role>
+				<role>maintainer</role>
+			</roles>
+		</developer>
+	</developers>
+	<contributors>
+		<contributor>
+			<name>Fernando Amat</name>
+			<roles><role>founder</role></roles>
+			<properties><id>fernandoamat</id></properties>
+		</contributor>
+		<contributor>
+			<name>Curtis Rueden</name>
+			<url>https://imagej.net/User:Rueden</url>
+			<properties><id>ctrueden</id></properties>
+		</contributor>
+		<contributor>
+			<name>Yinan Wan</name>
+		</contributor>
+	</contributors>
 
-    <repositories>
-        <repository>
-            <id>ImageJ.Releases</id>
-            <url>http://maven.imagej.net/content/repositories/releases</url>
-        </repository>
-        <repository>
-            <id>ImageJ.Public</id>
-            <url>http://maven.imagej.net/content/repositories/public</url>
-        </repository>
-        <repository>
-            <id>ImageJ.3rdParty</id>
-            <url>http://maven.imagej.net/content/repositories/thirdparty</url>
-        </repository>
-    </repositories>
+	<mailingLists>
+		<mailingList>
+			<name>Image.sc Forum</name>
+			<archive>https://forum.image.sc/</archive>
+		</mailingList>
+	</mailingLists>
 
-    <build>
-        <resources>
-            <resource>
-                <directory>src/main/resources</directory>
-                <includes>
-                    <include>**/*.*</include>
-                </includes>
-            </resource>
-            <resource>
-                <directory>../</directory>
-                <includes>
-                    <include>LICENSE.txt</include>
-                    <include>README.md</include>
-                </includes>
-            </resource>
-        </resources>
-    </build>
+	<scm>
+		<connection>scm:git:git://github.com/bhoeckendorf/klb-bdv</connection>
+		<developerConnection>scm:git:git@github.com:bhoeckendorf/klb-bdv</developerConnection>
+		<tag>HEAD</tag>
+		<url>https://github.com/bhoeckendorf/klb-bdv</url>
+	</scm>
+	<issueManagement>
+		<system>GitHub Issues</system>
+		<url>https://github.com/bhoeckendorf/klb-bdv/issues</url>
+	</issueManagement>
+	<ciManagement>
+		<system>None</system>
+	</ciManagement>
 
-    <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <enforcer.skip>true</enforcer.skip>
-    </properties>
+	<properties>
+		<package-name>org.janelia.simview.klb.bdv</package-name>
+		<license.licenseName>jfrc</license.licenseName>
+		<license.copyrightOwners>Howard Hughes Medical Institute.</license.copyrightOwners>
+		<additionalparam>-Xdoclint:none</additionalparam>
+		<klb.version>0.3.4</klb.version>
+	</properties>
+
+	<repositories>
+		<repository>
+			<id>imagej.public</id>
+			<url>https://maven.imagej.net/content/groups/public</url>
+		</repository>
+	</repositories>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.janelia.simview</groupId>
+			<artifactId>klb</artifactId>
+			<version>${klb.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>sc.fiji</groupId>
+			<artifactId>bigdataviewer-core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>sc.fiji</groupId>
+			<artifactId>SPIM_Registration</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.miglayout</groupId>
+			<artifactId>miglayout</artifactId>
+			<classifier>swing</classifier>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<resources>
+			<resource>
+				<directory>src/main/resources</directory>
+				<includes>
+					<include>**/*.*</include>
+				</includes>
+			</resource>
+			<resource>
+				<directory>../</directory>
+				<includes>
+					<include>LICENSE.txt</include>
+					<include>README.md</include>
+				</includes>
+			</resource>
+		</resources>
+	</build>
 </project>
