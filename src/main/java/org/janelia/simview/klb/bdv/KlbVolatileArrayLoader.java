@@ -5,8 +5,9 @@ import net.imglib2.Volatile;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
 import org.janelia.simview.klb.KLB;
+import net.imglib2.img.basictypeaccess.DataAccess;
 
-public abstract class KlbVolatileArrayLoader< T extends RealType< T > & NativeType< T >, V extends Volatile< T > & NativeType< V >, A > implements CacheArrayLoader< A >
+public abstract class KlbVolatileArrayLoader< T extends RealType< T > & NativeType< T >, V extends Volatile< T > & NativeType< V >, A extends DataAccess > implements CacheArrayLoader< A >
 {
     protected final KLB klb = KLB.newInstance();
     private final KlbPartitionResolver resolver;

@@ -16,6 +16,7 @@ import mpicbg.spim.data.sequence.VoxelDimensions;
 import net.imglib2.*;
 import net.imglib2.cache.volatiles.CacheHints;
 import net.imglib2.cache.volatiles.LoadingStrategy;
+import net.imglib2.img.basictypeaccess.DataAccess;
 import net.imglib2.img.Img;
 import net.imglib2.img.ImgFactory;
 import net.imglib2.img.array.ArrayImgFactory;
@@ -86,7 +87,7 @@ public class KlbImgLoader implements ViewerImgLoader, MultiResolutionImgLoader
     }
 
 
-    public class KlbSetupImgLoader< T extends RealType< T > & NativeType< T >, V extends Volatile< T > & NativeType< V >, A > implements ViewerSetupImgLoader< T, V >, MultiResolutionSetupImgLoader< T >
+    public class KlbSetupImgLoader< T extends RealType< T > & NativeType< T >, V extends Volatile< T > & NativeType< V >, A extends DataAccess > implements ViewerSetupImgLoader< T, V >, MultiResolutionSetupImgLoader< T >
     {
         private final int viewSetupId;
         private final long[] imageSize = new long[ 3 ];
