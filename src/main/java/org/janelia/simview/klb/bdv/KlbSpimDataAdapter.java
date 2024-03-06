@@ -14,15 +14,15 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
-import spim.fiji.datasetmanager.MultiViewDatasetDefinition;
-import spim.fiji.spimdata.SpimData2;
+//import spim.fiji.datasetmanager.MultiViewDatasetDefinition;
+import mpicbg.spim.data.SpimData;
 
 /**
  * Interfaces a KlbPartitionResolver instance with Fiji's SpimData
  * dataset layout description. Can be consumed directly or serialized
  * to XML.
  */
-public class KlbSpimDataAdapter implements MultiViewDatasetDefinition
+public class KlbSpimDataAdapter //implements MultiViewDatasetDefinition
 {
 
     private final KlbPartitionResolver resolver;
@@ -32,20 +32,20 @@ public class KlbSpimDataAdapter implements MultiViewDatasetDefinition
         this.resolver = resolver;
     }
 
-    @Override
+    //@Override
     public String getTitle()
     {
         return "KLB Dataset";
     }
 
-    @Override
+    //@Override
     public String getExtendedDescription()
     {
         return "KLB Dataset";
     }
 
-    @Override
-    public SpimData2 createDataset()
+    //@Override
+    public SpimData createDataset()
     {
         // ViewSetups
         final long[] imageSize = new long[ 3 ];
@@ -136,15 +136,15 @@ public class KlbSpimDataAdapter implements MultiViewDatasetDefinition
             }
         }
 
-        // combine all the above into a SpimData2
-        return new SpimData2( new File( System.getProperty( "user.home" ) ), seq, new ViewRegistrations( registrations ), null, null );
+        // combine all the above into a SpimData
+        return new SpimData( new File( System.getProperty( "user.home" ) ), seq, new ViewRegistrations( registrations ) );
     }
 
-    @Override
+    /*@Override
     public MultiViewDatasetDefinition newInstance()
     {
         return new KlbSpimDataAdapter( null );
-    }
+    }*/
 
     /**
      * Writes the dataset definition to XML.
@@ -153,7 +153,7 @@ public class KlbSpimDataAdapter implements MultiViewDatasetDefinition
      */
     public void writeXML( final String filePath ) throws SpimDataException
     {
-        final SpimData2 data = createDataset();
+        final SpimData data = createDataset();
         data.setBasePath( new File( filePath ).getParentFile() );
         new XmlIoSpimData().save( data, filePath );
     }

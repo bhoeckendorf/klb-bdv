@@ -23,8 +23,9 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import spim.fiji.spimdata.SpimData2;
-import spim.fiji.spimdata.XmlIoSpimData2;
+import mpicbg.spim.data.SpimData;
+import mpicbg.spim.data.XmlIoSpimData;
+
 
 @Plugin( type = Command.class, menuPath = "Plugins>Multiview Reconstruction>Convert transforms to SiMView" )
 public class TransformsSpimreg2Simview implements Command
@@ -58,12 +59,12 @@ public class TransformsSpimreg2Simview implements Command
     {
         log.info( "Converting SPIM Registration transforms to SiMView standard" );
 
-        SpimData2 spimData = null;
+        SpimData spimData = null;
         SequenceDescription seq = null;
         KlbImgLoader imageLoader = null;
         MissingViews missingViews = null;
         try {
-            spimData = new XmlIoSpimData2( null ).load( xmlFile.getAbsolutePath() );
+            spimData = new XmlIoSpimData().load( xmlFile.getAbsolutePath() );
             seq = spimData.getSequenceDescription();
             imageLoader = ( KlbImgLoader ) seq.getImgLoader();
             missingViews = seq.getMissingViews();

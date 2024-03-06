@@ -14,7 +14,7 @@ import javax.swing.*;
 import java.awt.event.*;
 import java.io.File;
 
-import spim.fiji.spimdata.SpimData2;
+import mpicbg.spim.data.SpimData;
 
 public class ViewSetupsConfigDialog extends JDialog implements ActionListener
 {
@@ -134,7 +134,7 @@ public class ViewSetupsConfigDialog extends JDialog implements ActionListener
         } else if ( source == viewButton ) {
             final KlbPartitionResolver resolver = getResolver();
             final KlbSpimDataAdapter spimDataAdapter = new KlbSpimDataAdapter( resolver );
-            final SpimData2 spimData = spimDataAdapter.createDataset();
+            final SpimData spimData = spimDataAdapter.createDataset();
             BigDataViewer.open( spimData, "", new ProgressWriterConsole(), ViewerOptions.options() );
             dispose();
         }

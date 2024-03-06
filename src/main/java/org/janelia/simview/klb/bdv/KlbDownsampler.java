@@ -3,8 +3,8 @@ package org.janelia.simview.klb.bdv;
 import bdv.export.Downsample;
 import bdv.export.ExportMipmapInfo;
 import bdv.export.ProposeMipmaps;
-import bdv.spimdata.SpimDataMinimal;
-import bdv.spimdata.XmlIoSpimDataMinimal;
+import mpicbg.spim.data.SpimData;
+import mpicbg.spim.data.XmlIoSpimData;
 import mpicbg.spim.data.SpimDataException;
 import mpicbg.spim.data.generic.sequence.AbstractSequenceDescription;
 import mpicbg.spim.data.generic.sequence.BasicViewSetup;
@@ -63,9 +63,9 @@ public class KlbDownsampler< T extends RealType< T > & NativeType< T > > impleme
         this.skipFirst = skipFirst;
         final String filePath = xmlFile.getAbsolutePath();
 
-        SpimDataMinimal data = null;
+        SpimData data = null;
         try {
-            data = new XmlIoSpimDataMinimal().load( filePath );
+            data = new XmlIoSpimData().load( filePath );
         } catch ( SpimDataException e ) {
             e.printStackTrace();
         }

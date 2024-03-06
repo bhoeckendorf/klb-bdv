@@ -106,13 +106,15 @@
 			<artifactId>klb</artifactId>
 			<version>${klb.version}</version>
 		</dependency>
+		
+		<!-- BigDataViewer dependencies -->
 		<dependency>
 			<groupId>sc.fiji</groupId>
 			<artifactId>bigdataviewer-core</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>sc.fiji</groupId>
-			<artifactId>SPIM_Registration</artifactId>
+			<artifactId>spim_data</artifactId>
 		</dependency>
 
 		
